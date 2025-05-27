@@ -46,23 +46,24 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 interface ProjectsByStatusPageProps {
-  params: { projectStatusParam: string }; 
+  params: { projectStatusParam: string };
 }
 
 export default async function ProjectsByStatusPage({ params }: ProjectsByStatusPageProps) {
   console.log('[ProjectsByStatusPage] Received params:', JSON.stringify(params));
-  const statusFromParams = params?.projectStatusParam; 
+  const statusFromParams = params?.projectStatusParam;
   const validStatuses: ProjectStatusKey[] = ["all", "new", "active", "on-hold", "completed"];
 
   if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as ProjectStatusKey)) {
      const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
-     console.error(`SERVER_ERROR_PATH: [ProjectsByStatusPage] Invalid or missing project status parameter. Displayed as: ${displayStatus}. Received status: ${statusFromParams}. Full params: ${JSON.stringify(params)}`);
+     const receivedParamsString = JSON.stringify(params); // For clearer error message
+     console.error(`SERVER_ERROR_PATH: [ProjectsByStatusPage] Invalid or missing project status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.projectStatusParam available? ${params?.projectStatusParam}`);
      return (
         <>
         <AppHeader title="Invalid Project Status" />
         <div className="p-6">
             <PageTitle title={`Invalid Project Status: ${displayStatus}`} />
-            <p>Please select a valid project status from the navigation.</p>
+            <p>Please select a valid project status from the navigation. Params received: {receivedParamsString}</p>
             <Button asChild className="mt-4">
             <Link href="/projects/all">View All Projects</Link>
             </Button>

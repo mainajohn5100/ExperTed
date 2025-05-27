@@ -1,64 +1,24 @@
 
-import { getTicketsByStatus } from '@/lib/data';
-import type { TicketStatusFilter, TicketDocumentStatus } from '@/types';
-import { TicketListClient } from '@/components/tickets/ticket-list-client';
-import { PageTitle } from '@/components/common/page-title';
+// This file is DEPRECATED due to a naming conflict with a built-in 'status' property.
+// The active route for ticket statuses is now /src/app/(app)/tickets/[ticketStateParam]/page.tsx
+// This file should be manually deleted from your project.
 import { AppHeader } from '@/components/layout/header';
+import { PageTitle } from '@/components/common/page-title';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic'; // Ensure fresh data on each request
-
-// Updated to log the full props and params object
-// Explicitly type props to ensure `params.status` is expected
-interface TicketsByStatusPageProps {
-  params: { status: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
-}
-
-export default async function TicketsByStatusPage({ params, searchParams }: TicketsByStatusPageProps) {
-  // Detailed logging at the beginning of the component
-  console.log('[TicketsByStatusPage] Received full props:', JSON.stringify({ params, searchParams }, null, 2));
-  console.log('[TicketsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
-
-  const statusFromParams = params?.status;
-  console.log('[TicketsByStatusPage] Extracted statusFromParams:', statusFromParams);
-
-
-  // Basic validation for status
-  const validStatuses: TicketStatusFilter[] = ["all", "new", "pending", "on-hold", "closed", "active", "terminated"];
-
-  if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as TicketStatusFilter)) {
-    const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
-    console.error(`[TicketsByStatusPage] Invalid or missing status parameter. Displayed as: ${displayStatus}. Received status: ${statusFromParams}. Full params: ${JSON.stringify(params)}`);
-    return (
-        <>
-        <AppHeader title="Invalid Ticket Status" />
-        <div className="p-6">
-            <PageTitle title={`Invalid Ticket Status: ${displayStatus}`} />
-            <p>Please select a valid ticket status from the navigation. The status parameter in the URL was not recognized or was missing.</p>
-            <Button asChild className="mt-4">
-            <Link href="/tickets/all">View All Tickets</Link>
-            </Button>
-        </div>
-      </>
-    );
-  }
-
-  const status = statusFromParams as TicketStatusFilter;
-  const tickets = await getTicketsByStatus(status);
-  const statusTitle = status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
-
+export default function DeprecatedTicketStatusPage({ params }: { params: { status: string }}) {
+  console.warn(`[DEPRECATED /tickets/[status]/page.tsx] This page was hit with params: ${JSON.stringify(params)}. This file should be deleted. The correct route is /tickets/[ticketStateParam].`);
   return (
     <>
-    <AppHeader title={`${statusTitle} Tickets`}>
-        <Button asChild>
-          <Link href="/tickets/new-ticket">Create New Ticket</Link>
+      <AppHeader title="Deprecated Page" />
+      <div className="p-6">
+        <PageTitle title="Deprecated Ticket Status Page" />
+        <p>This page ({`/tickets/${params?.status}`}) is deprecated and should not be used. Please ensure this file is deleted and links point to the correct ticket status routes using '[ticketStateParam]'.</p>
+        <Button asChild className="mt-4">
+          <Link href="/tickets/all">Go to All Tickets</Link>
         </Button>
-      </AppHeader>
-    <div className="flex flex-col gap-6">
-      <TicketListClient tickets={tickets} statusTitle={statusTitle} />
-    </div>
+      </div>
     </>
   );
 }

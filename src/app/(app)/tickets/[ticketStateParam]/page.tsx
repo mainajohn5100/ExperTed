@@ -19,21 +19,21 @@ export default async function TicketsByStatusPage({ params, searchParams }: Tick
   console.log('[TicketsByStatusPage] Component loaded. Received full props:', JSON.stringify({ params, searchParams }, null, 2));
   console.log('[TicketsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
 
-  const statusFromParams = params?.ticketStateParam; 
+  const statusFromParams = params?.ticketStateParam;
   console.log('[TicketsByStatusPage] Extracted statusFromParams:', statusFromParams);
 
-  // Basic validation for status
   const validStatuses: TicketStatusFilter[] = ["all", "new", "pending", "on-hold", "closed", "active", "terminated"];
 
   if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as TicketStatusFilter)) {
     const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
-    console.error(`SERVER_ERROR_PATH: [TicketsByStatusPage] Invalid or missing status parameter. Displayed as: ${displayStatus}. Received status: ${statusFromParams}. Full params: ${JSON.stringify(params)}`);
+    const receivedParamsString = JSON.stringify(params); // For clearer error message
+    console.error(`SERVER_ERROR_PATH: [TicketsByStatusPage] Invalid or missing status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.ticketStateParam available? ${params?.ticketStateParam}`);
     return (
         <>
         <AppHeader title="Invalid Ticket Status" />
         <div className="p-6">
             <PageTitle title={`Invalid Ticket Status: ${displayStatus}`} />
-            <p>Please select a valid ticket status from the navigation. The status parameter in the URL ('${statusFromParams}') was not recognized or was missing.</p>
+            <p>Please select a valid ticket status from the navigation. The status parameter ('{statusFromParams}') in the URL was not recognized or was missing. Params received: {receivedParamsString}</p>
             <Button asChild className="mt-4">
             <Link href="/tickets/all">View All Tickets</Link>
             </Button>
