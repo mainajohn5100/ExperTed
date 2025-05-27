@@ -1,20 +1,22 @@
+
 import { PageTitle } from '@/components/common/page-title';
 import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { RecentTicketsTable } from '@/components/dashboard/recent-tickets-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockTickets } from '@/lib/data';
+import { getTicketsByStatus, getNewTicketsTodayCount } from '@/lib/data'; // Updated imports
 import { Ticket, FileText, Users, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/header';
 
 export default async function DashboardPage() {
-  const totalTickets = mockTickets.length;
-  const openTickets = mockTickets.filter(t => t.status !== 'closed' && t.status !== 'terminated').length;
-  const newTicketsToday = mockTickets.filter(t => {
-    const today = new Date().toISOString().split('T')[0];
-    return t.createdAt.startsWith(today) && t.status === 'new';
-  }).length;
+  // Fetch data from Appwrite (or your data source)
+  const allTickets = await getTicketsByStatus('all');
+  const totalTickets = allTickets.length;
+  
+  const openTickets = allTickets.filter(t => t.status !== 'closed' && t.status !== 'terminated').length;
+  
+  const newTicketsToday = await getNewTicketsTodayCount();
 
   return (
     <>

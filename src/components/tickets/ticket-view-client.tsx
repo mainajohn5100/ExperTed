@@ -1,7 +1,9 @@
+
 'use client';
 
-import type { Ticket, TicketStatus } from '@/types';
+import type { Ticket, TicketStatus, TicketReply } from '@/types';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +18,7 @@ import { getSmartReplies, SmartRepliesInput } from '@/ai/flows/smart-replies';
 import { suggestTags, SuggestTagsInput } from '@/ai/flows/suggest-tags';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { databases, databaseId, ticketsCollectionId } from '@/lib/appwrite'; // Import Appwrite
 
 interface TicketViewClientProps {
   ticket: Ticket;
@@ -27,20 +30,65 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   const [ticket, setTicket] = useState<Ticket>(initialTicket);
   const [replyContent, setReplyContent] = useState('');
   const [suggestedReply, setSuggestedReply] = useState('');
-  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]); // Renamed to avoid conflict
   const [isSmartReplyLoading, setIsSmartReplyLoading] = useState(false);
   const [isTagSuggestionLoading, setIsTagSuggestionLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
-    setTicket(initialTicket); // Re-sync if initialTicket changes (e.g. route change to different ticket)
+    setTicket(initialTicket); 
   }, [initialTicket]);
+
+  const parsedReplies = React.useMemo(() => {
+    try {
+      return ticket.replies ? JSON.parse(ticket.replies) as TicketReply[] : [];
+    } catch (e) {
+      console.error("Failed to parse replies JSON:", e);
+      return [];
+    }
+  }, [ticket.replies]);
+
+
+  const updateTicketInAppwrite = async (updatedFields: Partial<Ticket>) => {
+    setIsUpdating(true);
+    try {
+      const currentTicketData = { ...ticket, ...updatedFields };
+      // Ensure replies is a string before sending to Appwrite
+      const dataToSave = {
+        ...currentTicketData,
+        replies: typeof currentTicketData.replies === 'string' ? currentTicketData.replies : JSON.stringify(currentTicketData.replies || []),
+      };
+      // Remove Appwrite system fields if they are accidentally included in updatedFields
+      delete (dataToSave as any).$id;
+      delete (dataToSave as any).$createdAt;
+      delete (dataToSave as any).$updatedAt;
+      delete (dataToSave as any).$collectionId;
+      delete (dataToSave as any).$databaseId;
+      delete (dataToSave as any).$permissions;
+
+
+      const updatedDoc = await databases.updateDocument(
+        databaseId,
+        ticketsCollectionId,
+        ticket.$id,
+        dataToSave
+      );
+      setTicket(updatedDoc as unknown as Ticket);
+      toast({ title: "Ticket Updated", description: "Changes have been saved to the database." });
+      router.refresh(); // Refresh server components
+    } catch (error) {
+      console.error("Error updating ticket in Appwrite:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not save changes to the database." });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
 
   const handleStatusChange = (newStatus: TicketStatus) => {
-    // In a real app, this would be an API call
-    setTicket(prev => ({ ...prev!, status: newStatus, updatedAt: new Date().toISOString() }));
-    toast({ title: "Status Updated", description: `Ticket status changed to ${newStatus}.` });
+    updateTicketInAppwrite({ status: newStatus, $updatedAt: new Date().toISOString() });
   };
 
   const handleSmartReply = async () => {
@@ -48,8 +96,9 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
     setIsSmartReplyLoading(true);
     setSuggestedReply('');
     try {
+      const currentRepliesContent = parsedReplies.map(r => r.content).join('\\n');
       const input: SmartRepliesInput = {
-        ticketContent: ticket.description + (ticket.replies?.map(r => r.content).join('\n') || ''),
+        ticketContent: ticket.description + (currentRepliesContent ? `\\n${currentRepliesContent}`: ''),
         userId: ticket.userId, 
       };
       const result = await getSmartReplies(input);
@@ -65,11 +114,11 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   const handleSuggestTags = async () => {
     if (!ticket) return;
     setIsTagSuggestionLoading(true);
-    setSuggestedTags([]);
+    setAiSuggestedTags([]);
     try {
       const input: SuggestTagsInput = { queryContent: ticket.description };
       const result = await suggestTags(input);
-      setSuggestedTags(result.suggestedTags);
+      setAiSuggestedTags(result.suggestedTags.filter(tag => !ticket.tags.includes(tag)));
     } catch (error) {
       console.error("Error fetching tag suggestions:", error);
       toast({ variant: "destructive", title: "Tag Suggestion Error", description: "Could not fetch tag suggestions." });
@@ -80,33 +129,33 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   
   const addTag = (tag: string) => {
     if (!ticket.tags.includes(tag)) {
-      setTicket(prev => ({ ...prev!, tags: [...prev!.tags, tag] }));
-      setSuggestedTags(prev => prev.filter(t => t !== tag)); // Remove from suggestions
+      const newTags = [...ticket.tags, tag];
+      updateTicketInAppwrite({ tags: newTags });
+      setAiSuggestedTags(prev => prev.filter(t => t !== tag));
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTicket(prev => ({ ...prev!, tags: prev!.tags.filter(tag => tag !== tagToRemove) }));
+    const newTags = ticket.tags.filter(tag => tag !== tagToRemove);
+    updateTicketInAppwrite({ tags: newTags });
   };
 
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket) return;
-    // In a real app, this would be an API call
-    const newReply = {
-      id: `reply-${Date.now()}`,
-      userId: 'current-agent-id', // Placeholder for current agent
-      userName: 'Support Agent',
+    
+    const newReply: TicketReply = {
+      id: `reply-${Date.now()}`, // Simple ID for client-side
+      userId: 'current-agent-id', 
+      userName: 'Support Agent', // Placeholder
       content: replyContent,
       createdAt: new Date().toISOString(),
     };
-    setTicket(prev => ({
-      ...prev!,
-      replies: [...(prev!.replies || []), newReply],
-      updatedAt: new Date().toISOString(),
-    }));
+
+    const updatedReplies = [...parsedReplies, newReply];
+    updateTicketInAppwrite({ replies: JSON.stringify(updatedReplies), $updatedAt: new Date().toISOString() });
+    
     setReplyContent('');
-    setSuggestedReply(''); // Clear suggestion after sending
-    toast({ title: "Reply Sent", description: "Your reply has been added to the ticket." });
+    setSuggestedReply(''); 
   };
 
   if (!ticket) {
@@ -115,7 +164,6 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
-      {/* Main Ticket Content */}
       <div className="md:col-span-2 space-y-6">
         <Card>
           <CardHeader>
@@ -126,12 +174,12 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
                   Opened by {ticket.customerName} ({ticket.customerEmail}) via {ticket.channel}
                 </CardDescription>
               </div>
-              <Link href={`/tickets/${ticket.status}`}>
+              <Link href={`/tickets/${ticket.status === 'all' ? 'all' : ticket.status}`}>
                 <Button variant="outline" size="sm"><ArrowLeft className="mr-2 h-4 w-4" /> Back to List</Button>
               </Link>
             </div>
             <div className="text-sm text-muted-foreground mt-2">
-              Created: {new Date(ticket.createdAt).toLocaleString()} | Last Updated: {new Date(ticket.updatedAt).toLocaleString()}
+              Created: {new Date(ticket.$createdAt).toLocaleString()} | Last Updated: {new Date(ticket.$updatedAt).toLocaleString()}
             </div>
           </CardHeader>
           <CardContent>
@@ -139,13 +187,12 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
           </CardContent>
         </Card>
 
-        {/* Replies Section */}
         <Card>
           <CardHeader>
             <CardTitle>Conversation History</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {(ticket.replies || []).map((reply) => (
+            {parsedReplies.map((reply) => (
               <div key={reply.id} className="flex gap-3">
                 <Avatar>
                   <AvatarImage src={`https://placehold.co/40x40.png?text=${reply.userName.substring(0,1)}`} data-ai-hint="avatar user"/>
@@ -160,13 +207,12 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
                 </div>
               </div>
             ))}
-            {(!ticket.replies || ticket.replies.length === 0) && (
+            {parsedReplies.length === 0 && (
               <p className="text-sm text-muted-foreground">No replies yet.</p>
             )}
           </CardContent>
         </Card>
 
-        {/* New Reply Section */}
         <Card>
           <CardHeader>
             <CardTitle>Add Reply</CardTitle>
@@ -197,35 +243,34 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button onClick={handleSmartReply} variant="outline" disabled={isSmartReplyLoading}>
+            <Button onClick={handleSmartReply} variant="outline" disabled={isSmartReplyLoading || isUpdating}>
               {isSmartReplyLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lightbulb className="mr-2 h-4 w-4" />}
               Smart Reply
             </Button>
-            <Button onClick={handleSendReply} disabled={!replyContent.trim()}>
-              <Send className="mr-2 h-4 w-4" /> Send Reply
+            <Button onClick={handleSendReply} disabled={!replyContent.trim() || isUpdating}>
+              {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />} Send Reply
             </Button>
           </CardFooter>
         </Card>
       </div>
 
-      {/* Sidebar for Ticket Details & Actions */}
       <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Ticket Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between"><span>ID:</span> <span className="font-mono">{ticket.id}</span></div>
+            <div className="flex justify-between"><span>ID:</span> <span className="font-mono">{ticket.$id}</span></div>
             <Separator />
             <div className="flex justify-between items-center">
               <span>Status:</span>
-              <Select value={ticket.status} onValueChange={handleStatusChange}>
+              <Select value={ticket.status} onValueChange={(val) => handleStatusChange(val as TicketStatus)} disabled={isUpdating}>
                 <SelectTrigger className="w-[180px] h-8">
                   <SelectValue placeholder="Set status" />
                 </SelectTrigger>
                 <SelectContent>
                   {ticketStatuses.map(s => (
-                    <SelectItem key={s} value={s}>
+                    <SelectItem key={s} value={s} disabled={s === 'all'}>
                       {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
                     </SelectItem>
                   ))}
@@ -243,7 +288,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Tags</CardTitle>
-              <Button onClick={handleSuggestTags} variant="ghost" size="sm" disabled={isTagSuggestionLoading}>
+              <Button onClick={handleSuggestTags} variant="ghost" size="sm" disabled={isTagSuggestionLoading || isUpdating}>
                 {isTagSuggestionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 Suggest
               </Button>
@@ -254,20 +299,20 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
               {ticket.tags.map(tag => (
                 <Badge key={tag} variant="secondary" className="text-sm py-1">
                   {tag}
-                  <button onClick={() => removeTag(tag)} className="ml-2 text-muted-foreground hover:text-foreground">
+                  <button onClick={() => removeTag(tag)} disabled={isUpdating} className="ml-2 text-muted-foreground hover:text-foreground disabled:opacity-50">
                     &times;
                   </button>
                 </Badge>
               ))}
               {ticket.tags.length === 0 && <p className="text-sm text-muted-foreground">No tags yet.</p>}
             </div>
-            {suggestedTags.length > 0 && (
+            {aiSuggestedTags.length > 0 && (
               <>
                 <Separator className="my-4" />
                 <p className="text-sm font-medium mb-2">Suggested Tags:</p>
                 <div className="flex flex-wrap gap-2">
-                  {suggestedTags.map(tag => (
-                    <Button key={tag} size="sm" variant="outline" onClick={() => addTag(tag)}>
+                  {aiSuggestedTags.map(tag => (
+                    <Button key={tag} size="sm" variant="outline" onClick={() => addTag(tag)} disabled={isUpdating}>
                       <Tag className="mr-2 h-3 w-3" /> {tag}
                     </Button>
                   ))}

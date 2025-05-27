@@ -1,106 +1,12 @@
-import type { Ticket, Project, User } from '@/types';
 
+import type { Ticket, Project, User, TicketStatus, ProjectStatusKey, TicketReply } from '@/types';
+import { databases, databaseId, ticketsCollectionId, Query, ID } from './appwrite';
+
+// Mock data for users and projects will remain for now
 export const mockUsers: User[] = [
   { id: 'user-1', name: 'Alice Wonderland', avatar: 'https://placehold.co/100x100.png' },
   { id: 'user-2', name: 'Bob The Builder', avatar: 'https://placehold.co/100x100.png' },
   { id: 'user-3', name: 'Charlie Chaplin', avatar: 'https://placehold.co/100x100.png' },
-];
-
-export const mockTickets: Ticket[] = [
-  {
-    id: 'TICK-001',
-    title: 'Login Issue on Mobile App',
-    description: 'User reports being unable to login to the mobile application. Getting an "Invalid Credentials" error despite using correct username and password. This started happening after the recent app update. Tried reinstalling, clearing cache, no luck.',
-    customerName: 'John Doe',
-    customerEmail: 'john.doe@example.com',
-    createdAt: '2024-05-01T10:00:00Z',
-    updatedAt: '2024-05-01T12:30:00Z',
-    status: 'pending',
-    tags: ['login', 'mobile-app', 'bug'],
-    assignedTo: 'Alice Wonderland',
-    priority: 'high',
-    channel: 'email',
-    userId: 'customer-123',
-    replies: [
-      { id: 'reply-1', userId: 'Alice Wonderland', userName: 'Alice Wonderland', content: 'Thanks for reporting, John. We are looking into this.', createdAt: '2024-05-01T11:00:00Z' }
-    ]
-  },
-  {
-    id: 'TICK-002',
-    title: 'Feature Request: Dark Mode',
-    description: 'It would be great to have a dark mode option in the web application. It helps with eye strain, especially when working at night.',
-    customerName: 'Jane Smith',
-    customerEmail: 'jane.smith@example.com',
-    createdAt: '2024-05-02T14:15:00Z',
-    updatedAt: '2024-05-02T14:15:00Z',
-    status: 'new',
-    tags: ['feature-request', 'ui', 'dark-mode'],
-    priority: 'medium',
-    channel: 'web-form',
-    userId: 'customer-456',
-  },
-  {
-    id: 'TICK-003',
-    title: 'Billing Inquiry - Incorrect Charge',
-    description: 'I was charged twice for my monthly subscription. Please investigate and refund the extra charge. My subscription ID is SUB-789123.',
-    customerName: 'Peter Pan',
-    customerEmail: 'peter.pan@example.com',
-    createdAt: '2024-04-28T09:00:00Z',
-    updatedAt: '2024-04-29T17:00:00Z',
-    status: 'closed',
-    tags: ['billing', 'invoice', 'refund'],
-    assignedTo: 'Bob The Builder',
-    priority: 'high',
-    channel: 'social-media',
-    userId: 'customer-789',
-    replies: [
-       { id: 'reply-2a', userId: 'Bob The Builder', userName: 'Bob The Builder', content: 'Hi Peter, we have processed your refund. It should reflect in 3-5 business days.', createdAt: '2024-04-29T16:50:00Z' }
-    ]
-  },
-  {
-    id: 'TICK-004',
-    title: 'Password Reset Not Working',
-    description: 'The password reset link I received via email is expired or invalid. I cannot reset my password.',
-    customerName: 'Wendy Darling',
-    customerEmail: 'wendy.darling@example.com',
-    createdAt: '2024-05-03T11:00:00Z',
-    updatedAt: '2024-05-03T11:00:00Z',
-    status: 'active',
-    tags: ['password-reset', 'account'],
-    assignedTo: 'Alice Wonderland',
-    priority: 'urgent',
-    channel: 'sms',
-    userId: 'customer-101',
-  },
-   {
-    id: 'TICK-005',
-    title: 'How to integrate with API?',
-    description: 'I need documentation or guidance on how to integrate our internal system with your API. Specifically, I am looking for endpoints related to data export.',
-    customerName: 'Michael Scott',
-    customerEmail: 'michael.scott@example.com',
-    createdAt: '2024-05-03T16:00:00Z',
-    updatedAt: '2024-05-03T16:00:00Z',
-    status: 'on-hold',
-    tags: ['api', 'integration', 'documentation'],
-    assignedTo: 'Charlie Chaplin',
-    priority: 'medium',
-    channel: 'email',
-    userId: 'customer-112',
-  },
-  {
-    id: 'TICK-006',
-    title: 'Account Terminated Unexpectedly',
-    description: 'My account seems to have been terminated without any prior notice. I need to understand why and if it can be reactivated. My username is "captainhook".',
-    customerName: 'James Hook',
-    customerEmail: 'captain.hook@example.com',
-    createdAt: '2024-04-20T10:00:00Z',
-    updatedAt: '2024-04-22T10:00:00Z',
-    status: 'terminated',
-    tags: ['account', 'termination', 'policy-violation'],
-    priority: 'high',
-    channel: 'manual',
-    userId: 'customer-303',
-  }
 ];
 
 export const mockProjects: Project[] = [
@@ -146,16 +52,68 @@ export const mockProjects: Project[] = [
 ];
 
 
-// Helper functions to fetch mock data
+// --- Ticket Functions using Appwrite ---
+
+export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>): Promise<Ticket> => {
+  try {
+    const document = await databases.createDocument(
+      databaseId,
+      ticketsCollectionId,
+      ID.unique(),
+      {
+        ...ticketData,
+        replies: ticketData.replies || JSON.stringify([]) // Ensure replies is a JSON string
+      }
+    );
+    return document as unknown as Ticket;
+  } catch (error) {
+    console.error("Failed to create ticket in Appwrite:", error);
+    throw error;
+  }
+};
+
 export const getTicketsByStatus = async (status: TicketStatus): Promise<Ticket[]> => {
-  if (status === 'all') return mockTickets;
-  return mockTickets.filter(ticket => ticket.status === status);
+  try {
+    const queries = [Query.orderDesc('$createdAt')];
+    if (status !== 'all') {
+      queries.push(Query.equal('status', status));
+    }
+    const response = await databases.listDocuments(databaseId, ticketsCollectionId, queries);
+    return response.documents as unknown as Ticket[];
+  } catch (error) {
+    console.error(`Failed to fetch tickets with status "${status}" from Appwrite:`, error);
+    return []; // Return empty array on error
+  }
 };
 
 export const getTicketById = async (id: string): Promise<Ticket | undefined> => {
-  return mockTickets.find(ticket => ticket.id === id);
+  try {
+    const document = await databases.getDocument(databaseId, ticketsCollectionId, id);
+    return document as unknown as Ticket;
+  } catch (error) {
+    console.error(`Failed to fetch ticket with ID "${id}" from Appwrite:`, error);
+    return undefined; // Return undefined on error or if not found
+  }
 };
 
+export const getNewTicketsTodayCount = async (): Promise<number> => {
+  try {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    // Appwrite query for "created after start of day" and status "new"
+    const response = await databases.listDocuments(databaseId, ticketsCollectionId, [
+      Query.equal('status', 'new'),
+      Query.greaterThanEqual('$createdAt', startOfDay)
+    ]);
+    return response.total;
+  } catch (error) {
+    console.error("Failed to fetch new tickets today count from Appwrite:", error);
+    return 0;
+  }
+}
+
+
+// --- Project Functions (still using mock data) ---
 export const getProjectsByStatus = async (status: ProjectStatusKey): Promise<Project[]> => {
   if (status === 'all') return mockProjects;
   return mockProjects.filter(project => project.status === status);

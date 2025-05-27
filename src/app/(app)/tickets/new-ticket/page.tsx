@@ -1,5 +1,5 @@
 
-'use client'; // Needs to be a client component for form handling and AI calls
+'use client'; 
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,6 +17,7 @@ import { Loader2, Tag, Lightbulb, PlusCircle } from 'lucide-react';
 import type { Ticket, TicketPriority, TicketChannel, TicketStatus } from "@/types";
 import { AppHeader } from "@/components/layout/header";
 import { PageTitle } from "@/components/common/page-title";
+import { createTicketInAppwrite } from '@/lib/data'; // Import Appwrite function
 
 const priorities: TicketPriority[] = ["low", "medium", "high", "urgent"];
 const channels: TicketChannel[] = ["email", "sms", "social-media", "web-form", "manual"];
@@ -33,7 +34,7 @@ export default function NewTicketPage() {
   const [currentTags, setCurrentTags] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState('');
   
-  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [suggestedTagsAI, setSuggestedTagsAI] = useState<string[]>([]);
   const [isTagSuggestionLoading, setIsTagSuggestionLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,11 +44,11 @@ export default function NewTicketPage() {
       return;
     }
     setIsTagSuggestionLoading(true);
-    setSuggestedTags([]);
+    setSuggestedTagsAI([]);
     try {
       const input: SuggestTagsInput = { queryContent: description };
       const result = await suggestTags(input);
-      setSuggestedTags(result.suggestedTags.filter(tag => !currentTags.includes(tag))); // Filter out already added tags
+      setSuggestedTagsAI(result.suggestedTags.filter(tag => !currentTags.includes(tag))); 
     } catch (error) {
       console.error("Error fetching tag suggestions:", error);
       toast({ variant: "destructive", title: "Tag Suggestion Error", description: "Could not fetch tag suggestions." });
@@ -60,7 +61,7 @@ export default function NewTicketPage() {
     const trimmedTag = tag.trim();
     if (trimmedTag && !currentTags.includes(trimmedTag)) {
       setCurrentTags(prev => [...prev, trimmedTag]);
-      setSuggestedTags(prev => prev.filter(t => t !== trimmedTag)); 
+      setSuggestedTagsAI(prev => prev.filter(t => t !== trimmedTag)); 
       setNewTagInput('');
     }
   };
@@ -79,8 +80,8 @@ export default function NewTicketPage() {
       return;
     }
 
-    const completeNewTicket: Ticket = {
-      id: `TICK-${Date.now().toString().slice(-5)}`, // Simple unique ID for mock purposes
+    // Prepare ticket data for Appwrite (excluding Appwrite-generated fields)
+    const newTicketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'> = {
       title,
       description,
       customerName,
@@ -88,25 +89,22 @@ export default function NewTicketPage() {
       priority,
       channel,
       tags: currentTags,
-      status: 'new', 
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userId: 'mock-user-id', // Placeholder for the user who created/owns the ticket
-      // assignedTo: undefined, // Optional, can be set later
-      // replies: [], // Optional, will be empty initially
+      status: 'new' as TicketStatus, // Ensure status is of correct type
+      userId: 'mock-user-id', // Placeholder, replace with actual user ID if auth is implemented
+      replies: JSON.stringify([]), // Initialize with empty replies array as JSON string
     };
 
-    // In a real app, this would be an API call to save the ticket
-    console.log("New Ticket Data (mock, not persisted):", completeNewTicket);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    toast({ title: "Ticket Created", description: `Ticket "${completeNewTicket.title}" has been (mock) created.` });
-    setIsSubmitting(false);
-    
-    // Redirect to dashboard
-    router.push('/dashboard'); 
+    try {
+      const createdTicket = await createTicketInAppwrite(newTicketData);
+      toast({ title: "Ticket Created", description: `Ticket "${createdTicket.title}" has been created successfully.` });
+      router.refresh(); // Refresh server components to reflect new data
+      router.push('/dashboard'); 
+    } catch (error) {
+      console.error("Failed to create ticket:", error);
+      toast({ variant: "destructive", title: "Creation Failed", description: "Could not create the ticket in the database." });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -184,11 +182,11 @@ export default function NewTicketPage() {
                   </Badge>
                 ))}
               </div>
-              {suggestedTags.length > 0 && (
+              {suggestedTagsAI.length > 0 && (
                 <div className="mb-2">
                   <p className="text-sm font-medium mb-1 text-primary">AI Suggestions:</p>
                   <div className="flex flex-wrap gap-2">
-                    {suggestedTags.map(tag => (
+                    {suggestedTagsAI.map(tag => (
                       <Button key={tag} size="sm" variant="outline" type="button" onClick={() => addTag(tag)}>
                         <Tag className="mr-2 h-3 w-3" /> {tag}
                       </Button>

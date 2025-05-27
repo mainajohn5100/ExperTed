@@ -1,5 +1,6 @@
+
 import Link from 'next/link';
-import { mockTickets } from '@/lib/data';
+import { getTicketsByStatus } from '@/lib/data'; // Use Appwrite enabled function
 import type { Ticket } from '@/types';
 import {
   Table,
@@ -13,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowUpRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { cn } from '@/lib/utils'; // Import cn from lib/utils
 
 function formatRelativeDate(dateString: string) {
   const date = new Date(dateString);
@@ -33,9 +35,11 @@ function formatRelativeDate(dateString: string) {
 }
 
 export async function RecentTicketsTable() {
-  // Fetch or use mock data - for now, sort by date and take top 5
-  const recentTickets = [...mockTickets]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  // Fetch all tickets and then sort/slice.
+  // For a production app with many tickets, you'd want to fetch only the top 5 recent directly from the DB.
+  const allTickets = await getTicketsByStatus('all'); 
+  const recentTickets = [...allTickets]
+    .sort((a, b) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime()) // Use $createdAt
     .slice(0, 5);
 
   return (
@@ -57,7 +61,7 @@ export async function RecentTicketsTable() {
           </TableHeader>
           <TableBody>
             {recentTickets.map((ticket) => (
-              <TableRow key={ticket.id}>
+              <TableRow key={ticket.$id}> {/* Use $id */}
                 <TableCell>
                   <div className="font-medium">{ticket.customerName}</div>
                   <div className="hidden text-sm text-muted-foreground md:inline">
@@ -88,10 +92,10 @@ export async function RecentTicketsTable() {
                     {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                    </Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{formatRelativeDate(ticket.createdAt)}</TableCell>
+                <TableCell className="hidden md:table-cell">{formatRelativeDate(ticket.$createdAt)}</TableCell> {/* Use $createdAt */}
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/tickets/view/${ticket.id}`}>
+                    <Link href={`/tickets/view/${ticket.$id}`}> {/* Use $id */}
                       View <ArrowUpRight className="ml-1 h-4 w-4" />
                     </Link>
                   </Button>
@@ -103,9 +107,4 @@ export async function RecentTicketsTable() {
       </CardContent>
     </Card>
   );
-}
-
-// Helper function for class names, can be moved to utils if used elsewhere
-function cn(...classes: string[]) {
-  return classes.filter(Boolean).join(' ')
 }
