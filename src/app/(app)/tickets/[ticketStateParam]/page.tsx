@@ -1,4 +1,7 @@
 
+// Top-level log to confirm file is reached by Next.js
+console.log('[TicketsByStatusPage] File /src/app/(app)/tickets/[ticketStateParam]/page.tsx reached by Next.js routing.');
+
 import { getTicketsByStatus } from '@/lib/data';
 import type { TicketStatusFilter, TicketDocumentStatus } from '@/types';
 import { TicketListClient } from '@/components/tickets/ticket-list-client';
@@ -10,7 +13,7 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic'; // Ensure fresh data on each request
 
 interface TicketsByStatusPageProps {
-  params: { ticketStateParam: string };
+  params: { ticketStateParam: string }; // Ensure this matches the directory name [ticketStateParam]
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
@@ -19,7 +22,7 @@ export default async function TicketsByStatusPage({ params, searchParams }: Tick
   console.log('[TicketsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
 
   try {
-    const statusFromParams = params?.ticketStateParam;
+    const statusFromParams = params?.ticketStateParam; // Use the correct param name
     console.log('[TicketsByStatusPage] Extracted statusFromParams:', statusFromParams);
 
     const validStatuses: TicketStatusFilter[] = ["all", "new", "pending", "on-hold", "closed", "active", "terminated"];
@@ -27,7 +30,7 @@ export default async function TicketsByStatusPage({ params, searchParams }: Tick
     if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as TicketStatusFilter)) {
       const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
       const receivedParamsString = JSON.stringify(params);
-      console.error(`SERVER_ERROR_PATH: [TicketsByStatusPage] Invalid or missing status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.ticketStateParam available? ${params?.ticketStateParam}`);
+      console.error(`SERVER_ERROR_PATH: [TicketsByStatusPage] Invalid or missing status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.ticketStateParam available? ${String(params?.ticketStateParam !== undefined)}`);
       return (
           <>
           <AppHeader title="Invalid Ticket Status" />
@@ -59,13 +62,14 @@ export default async function TicketsByStatusPage({ params, searchParams }: Tick
       </>
     );
   } catch (error) {
-    console.error(`[TicketsByStatusPage] UNHANDLED EXCEPTION for params "${params?.ticketStateParam}":`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[TicketsByStatusPage] UNHANDLED EXCEPTION for params "${params?.ticketStateParam}":`, errorMessage, error);
     return (
       <>
         <AppHeader title="Internal Server Error" />
         <div className="p-6">
           <PageTitle title="Internal Server Error" />
-          <p>An unexpected error occurred while trying to load tickets for status: "{params?.ticketStateParam}". Please check the server logs for more details.</p>
+          <p>An unexpected error occurred while trying to load tickets for status: "{params?.ticketStateParam}". Error: {errorMessage}. Please check the server logs for more details.</p>
            <Button asChild className="mt-4">
             <Link href="/dashboard">Go to Dashboard</Link>
           </Button>

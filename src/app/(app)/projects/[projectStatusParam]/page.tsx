@@ -1,4 +1,7 @@
 
+// Top-level log to confirm file is reached by Next.js
+console.log('[ProjectsByStatusPage] File /src/app/(app)/projects/[projectStatusParam]/page.tsx reached by Next.js routing.');
+
 import { getProjectsByStatus } from '@/lib/data';
 import type { Project, ProjectStatusKey } from '@/types';
 import { PageTitle } from '@/components/common/page-title';
@@ -46,7 +49,7 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 interface ProjectsByStatusPageProps {
-  params: { projectStatusParam: string };
+  params: { projectStatusParam: string }; // Ensure this matches the directory name [projectStatusParam]
 }
 
 export default async function ProjectsByStatusPage({ params }: ProjectsByStatusPageProps) {
@@ -54,7 +57,7 @@ export default async function ProjectsByStatusPage({ params }: ProjectsByStatusP
   console.log('[ProjectsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
   
   try {
-    const statusFromParams = params?.projectStatusParam;
+    const statusFromParams = params?.projectStatusParam; // Use the correct param name
     console.log('[ProjectsByStatusPage] Extracted statusFromParams:', statusFromParams);
     
     const validStatuses: ProjectStatusKey[] = ["all", "new", "active", "on-hold", "completed"];
@@ -62,7 +65,7 @@ export default async function ProjectsByStatusPage({ params }: ProjectsByStatusP
     if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as ProjectStatusKey)) {
        const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
        const receivedParamsString = JSON.stringify(params); 
-       console.error(`SERVER_ERROR_PATH: [ProjectsByStatusPage] Invalid or missing project status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.projectStatusParam available? ${params?.projectStatusParam}`);
+       console.error(`SERVER_ERROR_PATH: [ProjectsByStatusPage] Invalid or missing project status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.projectStatusParam available? ${String(params?.projectStatusParam !== undefined)}`);
        return (
           <>
           <AppHeader title="Invalid Project Status" />
@@ -102,13 +105,14 @@ export default async function ProjectsByStatusPage({ params }: ProjectsByStatusP
       </>
     );
   } catch (error) {
-    console.error(`[ProjectsByStatusPage] UNHANDLED EXCEPTION for params "${params?.projectStatusParam}":`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[ProjectsByStatusPage] UNHANDLED EXCEPTION for params "${params?.projectStatusParam}":`, errorMessage, error);
     return (
       <>
         <AppHeader title="Internal Server Error" />
         <div className="p-6">
           <PageTitle title="Internal Server Error" />
-          <p>An unexpected error occurred while trying to load projects for status: "{params?.projectStatusParam}". Please check the server logs for more details.</p>
+          <p>An unexpected error occurred while trying to load projects for status: "{params?.projectStatusParam}". Error: {errorMessage}. Please check the server logs for more details.</p>
            <Button asChild className="mt-4">
             <Link href="/dashboard">Go to Dashboard</Link>
           </Button>
