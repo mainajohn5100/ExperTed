@@ -1,11 +1,11 @@
 
-import { Client, Databases, Account, ID, Query } from 'appwrite';
+import { Client as AppwriteClient, Databases, Account, ID, Query } from 'appwrite';
 
-const client = new Client();
+const client = new AppwriteClient();
 
 const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!;
 const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!;
-const apiKey = process.env.APPWRITE_API_KEY!; // Used for server-side operations
+const apiKey = process.env.APPWRITE_API_KEY; // Used for server-side operations
 export const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
 export const ticketsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_TICKETS_COLLECTION_ID!;
 // Add other collection IDs here as needed, e.g.:
@@ -18,7 +18,8 @@ if (!endpoint || !projectId || !databaseId || !ticketsCollectionId) {
   );
 }
 
-client.setEndpoint(endpoint).setProject(projectId);
+client.setEndpoint(endpoint);
+client.setProject(projectId);
 
 // For server-side operations that require an API key
 if (apiKey && typeof window === 'undefined') {
