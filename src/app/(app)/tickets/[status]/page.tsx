@@ -10,11 +10,15 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic'; // Ensure fresh data on each request
 
 // Updated to log the full props and params object
-export default async function TicketsByStatusPage(props: { params: { status: string }, searchParams?: any }) {
-  const { params } = props;
+// Explicitly type props to ensure `params.status` is expected
+interface TicketsByStatusPageProps {
+  params: { status: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
 
+export default async function TicketsByStatusPage({ params, searchParams }: TicketsByStatusPageProps) {
   // Detailed logging at the beginning of the component
-  console.log('[TicketsByStatusPage] Received full props:', JSON.stringify(props, null, 2));
+  console.log('[TicketsByStatusPage] Received full props:', JSON.stringify({ params, searchParams }, null, 2));
   console.log('[TicketsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
 
   const statusFromParams = params?.status;
