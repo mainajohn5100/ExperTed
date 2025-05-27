@@ -10,13 +10,13 @@ export interface TicketReply {
   createdAt: string; // ISO date string
 }
 export interface Ticket {
-  id: string; // Changed from $id
+  $id: string; 
   title: string;
   description: string;
   customerName: string;
   customerEmail: string;
-  createdAt: string; // Changed from $createdAt (ISO date string)
-  updatedAt: string; // Changed from $updatedAt (ISO date string)
+  $createdAt: string; // ISO date string
+  $updatedAt: string; // ISO date string
   status: TicketStatus;
   tags: string[];
   assignedTo?: string; 

@@ -17,7 +17,7 @@ import { Loader2, Tag, Lightbulb, PlusCircle } from 'lucide-react';
 import type { Ticket, TicketPriority, TicketChannel, TicketStatus } from "@/types";
 import { AppHeader } from "@/components/layout/header";
 import { PageTitle } from "@/components/common/page-title";
-import { createTicket } from '@/lib/data'; // Changed from createTicketInAppwrite
+import { createTicketInAppwrite } from '@/lib/data';
 
 const priorities: TicketPriority[] = ["low", "medium", "high", "urgent"];
 const channels: TicketChannel[] = ["email", "sms", "social-media", "web-form", "manual"];
@@ -80,7 +80,8 @@ export default function NewTicketPage() {
       return;
     }
 
-    const newTicketData: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'> = {
+    // For Appwrite, $id, $createdAt, $updatedAt are handled by Appwrite
+    const newTicketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'> = {
       title,
       description,
       customerName,
@@ -88,19 +89,19 @@ export default function NewTicketPage() {
       priority,
       channel,
       tags: currentTags,
-      status: 'new' as TicketStatus,
-      userId: 'mock-user-id', 
-      replies: JSON.stringify([]),
+      status: 'new' as TicketStatus, // Default status
+      userId: 'mock-user-id', // Placeholder for actual user ID integration
+      replies: JSON.stringify([]), // Start with empty replies
     };
 
     try {
-      const createdTicket = await createTicket(newTicketData); // Changed from createTicketInAppwrite
-      toast({ title: "Ticket Creation Attempted", description: `Ticket "${createdTicket.title}" processing. (Backend not fully implemented for PostgreSQL)` });
-      router.refresh(); 
-      router.push('/dashboard'); 
+      const createdTicket = await createTicketInAppwrite(newTicketData);
+      toast({ title: "Ticket Created", description: `Ticket "${createdTicket.title}" has been successfully created in Appwrite.` });
+      router.refresh(); // Refresh current route or any data on the page
+      router.push('/dashboard'); // Redirect to dashboard
     } catch (error) {
-      console.error("Failed to create ticket:", error);
-      toast({ variant: "destructive", title: "Creation Failed", description: (error as Error).message || "Could not process the ticket creation." });
+      console.error("Failed to create ticket in Appwrite:", error);
+      toast({ variant: "destructive", title: "Creation Failed", description: (error as Error).message || "Could not create the ticket in Appwrite." });
     } finally {
       setIsSubmitting(false);
     }

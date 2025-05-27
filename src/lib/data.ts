@@ -1,7 +1,7 @@
 
 import type { Ticket, Project, User, TicketStatus, ProjectStatusKey } from '@/types';
-// Appwrite imports like databases, databaseId, ticketsCollectionId, Query, ID are removed.
-// You will need to set up a PostgreSQL client (e.g., using 'pg' or an ORM like Prisma)
+import { databases, databaseId, ticketsCollectionId, Query, ID } from './appwrite';
+import { formatISO, startOfDay, endOfDay } from 'date-fns';
 
 // Mock data for users and projects will remain for now
 export const mockUsers: User[] = [
@@ -52,57 +52,88 @@ export const mockProjects: Project[] = [
   }
 ];
 
+// --- Ticket Functions (using Appwrite) ---
 
-// --- Ticket Functions (to be implemented with PostgreSQL) ---
-
-export const createTicket = async (ticketData: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>): Promise<Ticket> => {
-  console.error("createTicket: Not implemented for PostgreSQL. Ticket data:", ticketData);
-  // This function needs to be implemented to insert data into your PostgreSQL 'tickets' table.
-  // It would typically involve connecting to the DB, executing an INSERT statement, and returning the created ticket.
-  // For now, returning a mock response or throwing an error.
-  // throw new Error("createTicket: Not implemented for PostgreSQL.");
-  // Or return a mock if downstream code expects a Ticket object:
-  return {
-    id: `mock-${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...ticketData,
-    replies: ticketData.replies || JSON.stringify([])
-  } as Ticket;
+export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>): Promise<Ticket> => {
+  try {
+    const document = await databases.createDocument(
+      databaseId,
+      ticketsCollectionId,
+      ID.unique(),
+      ticketData
+    );
+    return document as unknown as Ticket;
+  } catch (error) {
+    console.error("Failed to create ticket in Appwrite:", error);
+    throw error;
+  }
 };
 
 export const getTicketsByStatus = async (status: TicketStatus): Promise<Ticket[]> => {
-  console.error(`getTicketsByStatus: Not implemented for PostgreSQL. Status: ${status}`);
-  // This function needs to query your PostgreSQL 'tickets' table based on status.
-  // throw new Error("getTicketsByStatus: Not implemented for PostgreSQL.");
-  return []; // Return empty array
+  try {
+    const queries = [];
+    if (status !== 'all') {
+      queries.push(Query.equal('status', status));
+    }
+    // Add a default sort order, e.g., by creation date descending
+    queries.push(Query.orderDesc('$createdAt'));
+    
+    const response = await databases.listDocuments(databaseId, ticketsCollectionId, queries);
+    return response.documents as unknown as Ticket[];
+  } catch (error) {
+    console.error(`Failed to fetch tickets with status "${status}" from Appwrite:`, error);
+    return []; // Return empty array on error
+  }
 };
 
 export const getTicketById = async (id: string): Promise<Ticket | undefined> => {
-  console.error(`getTicketById: Not implemented for PostgreSQL. ID: ${id}`);
-  // This function needs to query your PostgreSQL 'tickets' table for a specific ID.
-  // throw new Error("getTicketById: Not implemented for PostgreSQL.");
-  return undefined; // Return undefined
+  try {
+    const document = await databases.getDocument(databaseId, ticketsCollectionId, id);
+    return document as unknown as Ticket;
+  } catch (error) {
+    console.error(`Failed to fetch ticket with ID "${id}" from Appwrite:`, error);
+    // Appwrite throws an error if document not found, so catch and return undefined
+    if ((error as any).code === 404) {
+        return undefined;
+    }
+    throw error; // Re-throw other errors
+  }
 };
 
 export const getNewTicketsTodayCount = async (): Promise<number> => {
-  console.error("getNewTicketsTodayCount: Not implemented for PostgreSQL.");
-  // This function needs to query your PostgreSQL 'tickets' table for new tickets created today.
-  // throw new Error("getNewTicketsTodayCount: Not implemented for PostgreSQL.");
-  return 0; // Return 0
+  try {
+    const todayStart = formatISO(startOfDay(new Date()));
+    const todayEnd = formatISO(endOfDay(new Date()));
+
+    const response = await databases.listDocuments(databaseId, ticketsCollectionId, [
+      Query.greaterThanEqual('$createdAt', todayStart),
+      Query.lessThanEqual('$createdAt', todayEnd),
+      Query.equal('status', 'new'), // Or just count all new tickets today regardless of current status
+      Query.limit(1) // We only need the total count
+    ]);
+    return response.total;
+  } catch (error) {
+    console.error("Failed to fetch new tickets today count from Appwrite:", error);
+    return 0;
+  }
 }
 
-export const updateTicket = async (ticketId: string, updatedFields: Partial<Omit<Ticket, 'id' | 'createdAt'>>): Promise<Ticket | undefined> => {
-  console.error(`updateTicket: Not implemented for PostgreSQL. Ticket ID: ${ticketId}, Updates:`, updatedFields);
-  // This function needs to update a ticket in your PostgreSQL 'tickets' table.
-  // It should fetch the current ticket, apply updates, and save it back.
-  // throw new Error("updateTicket: Not implemented for PostgreSQL.");
-  // For now, returning a mock updated ticket or undefined
-  const currentTicket = await getTicketById(ticketId);
-  if (currentTicket) {
-    return { ...currentTicket, ...updatedFields, updatedAt: new Date().toISOString() } as Ticket;
+export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>>): Promise<Ticket | undefined> => {
+  try {
+    const document = await databases.updateDocument(
+      databaseId,
+      ticketsCollectionId,
+      ticketId,
+      updatedFields
+    );
+    return document as unknown as Ticket;
+  } catch (error) {
+    console.error(`Failed to update ticket ${ticketId} in Appwrite:`, error);
+    if ((error as any).code === 404) {
+        return undefined;
+    }
+    throw error;
   }
-  return undefined;
 }
 
 

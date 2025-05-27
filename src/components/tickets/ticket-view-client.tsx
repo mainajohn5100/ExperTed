@@ -18,7 +18,7 @@ import { getSmartReplies, SmartRepliesInput } from '@/ai/flows/smart-replies';
 import { suggestTags, SuggestTagsInput } from '@/ai/flows/suggest-tags';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { updateTicket } from '@/lib/data'; // Import generic updateTicket
+import { updateTicketInAppwrite } from '@/lib/data'; // Use Appwrite update function
 
 interface TicketViewClientProps {
   ticket: Ticket;
@@ -51,34 +51,35 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   }, [ticket.replies]);
 
 
-  const handleTicketUpdate = async (updatedFields: Partial<Ticket>) => {
+  const handleTicketUpdate = async (updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt'>>) => { // Omit $createdAt for Appwrite
     setIsUpdating(true);
     try {
-      // Ensure replies is a string before sending
       const dataToSave = {
         ...updatedFields,
+        // Appwrite handles $updatedAt automatically, so we don't need to set it here manually.
+        // $updatedAt: new Date().toISOString(), // Not needed for Appwrite, it updates automatically
         replies: typeof updatedFields.replies === 'string' ? updatedFields.replies : JSON.stringify(updatedFields.replies || []),
       };
       
-      const updatedDoc = await updateTicket(ticket.id, dataToSave);
+      const updatedDoc = await updateTicketInAppwrite(ticket.$id, dataToSave); // Use Appwrite update
       if (updatedDoc) {
-        setTicket(updatedDoc);
-        toast({ title: "Ticket Update Attempted", description: "Changes processing. (Backend not fully implemented for PostgreSQL)" });
+        // Appwrite returns the updated document, so use its fields
+        setTicket(updatedDoc); 
+        toast({ title: "Ticket Updated", description: "Changes saved to Appwrite." });
         router.refresh();
       } else {
-        toast({ variant: "destructive", title: "Update Failed", description: "Could not find ticket to update or backend error." });
+        toast({ variant: "destructive", title: "Update Failed", description: "Could not find ticket to update or Appwrite error." });
       }
     } catch (error) {
-      console.error("Error updating ticket:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: (error as Error).message || "Could not save changes." });
+      console.error("Error updating ticket in Appwrite:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: (error as Error).message || "Could not save changes to Appwrite." });
     } finally {
       setIsUpdating(false);
     }
   };
 
-
   const handleStatusChange = (newStatus: TicketStatus) => {
-    handleTicketUpdate({ status: newStatus, updatedAt: new Date().toISOString() });
+    handleTicketUpdate({ status: newStatus }); // $updatedAt handled by Appwrite
   };
 
   const handleSmartReply = async () => {
@@ -120,29 +121,29 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   const addTag = (tag: string) => {
     if (!ticket.tags.includes(tag)) {
       const newTags = [...ticket.tags, tag];
-      handleTicketUpdate({ tags: newTags, updatedAt: new Date().toISOString() });
+      handleTicketUpdate({ tags: newTags }); // $updatedAt handled by Appwrite
       setAiSuggestedTags(prev => prev.filter(t => t !== tag));
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     const newTags = ticket.tags.filter(tag => tag !== tagToRemove);
-    handleTicketUpdate({ tags: newTags, updatedAt: new Date().toISOString() });
+    handleTicketUpdate({ tags: newTags }); // $updatedAt handled by Appwrite
   };
 
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket) return;
     
     const newReply: TicketReply = {
-      id: `reply-${Date.now()}`,
-      userId: 'current-agent-id', 
-      userName: 'Support Agent',
+      id: `reply-${Date.now()}`, // This ID is for client-side keying, Appwrite won't store this specific ID directly in the reply object if it's just a JSON string.
+      userId: 'current-agent-id', // Placeholder
+      userName: 'Support Agent', // Placeholder
       content: replyContent,
       createdAt: new Date().toISOString(),
     };
 
     const updatedReplies = [...parsedReplies, newReply];
-    handleTicketUpdate({ replies: JSON.stringify(updatedReplies), updatedAt: new Date().toISOString() });
+    handleTicketUpdate({ replies: JSON.stringify(updatedReplies) }); // $updatedAt handled by Appwrite
     
     setReplyContent('');
     setSuggestedReply(''); 
@@ -169,7 +170,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
               </Link>
             </div>
             <div className="text-sm text-muted-foreground mt-2">
-              Created: {new Date(ticket.createdAt).toLocaleString()} | Last Updated: {new Date(ticket.updatedAt).toLocaleString()}
+              Created: {new Date(ticket.$createdAt).toLocaleString()} | Last Updated: {new Date(ticket.$updatedAt).toLocaleString()}
             </div>
           </CardHeader>
           <CardContent>
@@ -250,7 +251,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
             <CardTitle>Ticket Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between"><span>ID:</span> <span className="font-mono">{ticket.id}</span></div>
+            <div className="flex justify-between"><span>ID:</span> <span className="font-mono">{ticket.$id}</span></div>
             <Separator />
             <div className="flex justify-between items-center">
               <span>Status:</span>

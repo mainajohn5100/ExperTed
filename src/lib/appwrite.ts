@@ -13,8 +13,8 @@ export const ticketsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_TICKETS_COLL
 
 
 if (!endpoint || !projectId || !databaseId || !ticketsCollectionId) {
-  throw new Error(
-    'Missing Appwrite environment variables. Please check your .env file.'
+  console.warn(
+    'Appwrite environment variables might be missing. Please check your .env file if Appwrite functionality is not working.'
   );
 }
 

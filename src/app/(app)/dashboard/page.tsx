@@ -4,13 +4,12 @@ import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { RecentTicketsTable } from '@/components/dashboard/recent-tickets-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getTicketsByStatus, getNewTicketsTodayCount } from '@/lib/data'; // Updated imports
+import { getTicketsByStatus, getNewTicketsTodayCount } from '@/lib/data'; 
 import { Ticket, FileText, Users, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/header';
 
 export default async function DashboardPage() {
-  // Fetch data from Appwrite (or your data source)
   const allTickets = await getTicketsByStatus('all');
   const totalTickets = allTickets.length;
   

@@ -45,13 +45,13 @@ function formatRelativeDate(dateString: string) {
 
 export function TicketListClient({ tickets, statusTitle }: TicketListClientProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [sortBy, setSortBy] = React.useState('createdAt_desc'); // Default sort by createdAt
+  const [sortBy, setSortBy] = React.useState('$createdAt_desc'); // Default sort by $createdAt for Appwrite
 
   const filteredAndSortedTickets = React.useMemo(() => {
     let filtered = tickets.filter(ticket => 
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.id.toLowerCase().includes(searchTerm.toLowerCase()) // Use id for search
+      ticket.$id.toLowerCase().includes(searchTerm.toLowerCase()) // Use $id for Appwrite search
     );
 
     const [key, order] = sortBy.split('_');
@@ -60,7 +60,7 @@ export function TicketListClient({ tickets, statusTitle }: TicketListClientProps
       let valA = a[key as keyof Ticket];
       let valB = b[key as keyof Ticket];
 
-      if (key === 'createdAt' || key === 'updatedAt') { // Use generic timestamps
+      if (key === '$createdAt' || key === '$updatedAt') { // Use Appwrite timestamps
         valA = new Date(valA as string).getTime();
         valB = new Date(valB as string).getTime();
       } else if (key === 'priority') {
@@ -101,11 +101,11 @@ export function TicketListClient({ tickets, statusTitle }: TicketListClientProps
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="createdAt_desc">Newest First</SelectItem>
-                <SelectItem value="createdAt_asc">Oldest First</SelectItem>
+                <SelectItem value="$createdAt_desc">Newest First</SelectItem>
+                <SelectItem value="$createdAt_asc">Oldest First</SelectItem>
                 <SelectItem value="priority_desc">Priority (High-Low)</SelectItem>
                 <SelectItem value="priority_asc">Priority (Low-High)</SelectItem>
-                <SelectItem value="updatedAt_desc">Last Updated</SelectItem>
+                <SelectItem value="$updatedAt_desc">Last Updated</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -116,7 +116,7 @@ export function TicketListClient({ tickets, statusTitle }: TicketListClientProps
           <div className="text-center py-10 text-muted-foreground">
             <TicketIcon className="mx-auto h-12 w-12 mb-4" />
             <p>No tickets found for "{statusTitle}" with current filters.</p>
-            <p className="text-xs">(Data backend operations need to be re-implemented for PostgreSQL)</p>
+             {/* Removed PostgreSQL specific message */}
           </div>
         ) : (
         <Table>
@@ -133,10 +133,10 @@ export function TicketListClient({ tickets, statusTitle }: TicketListClientProps
           </TableHeader>
           <TableBody>
             {filteredAndSortedTickets.map((ticket) => (
-              <TableRow key={ticket.id}> {/* Use id */}
-                <TableCell className="font-mono whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px] block md:table-cell">{ticket.id}</TableCell> {/* Use id */}
+              <TableRow key={ticket.$id}> {/* Use $id for Appwrite */}
+                <TableCell className="font-mono whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px] block md:table-cell">{ticket.$id}</TableCell> {/* Use $id for Appwrite */}
                 <TableCell>
-                  <Link href={`/tickets/view/${ticket.id}`} className="font-medium hover:underline"> {/* Use id */}
+                  <Link href={`/tickets/view/${ticket.$id}`} className="font-medium hover:underline"> {/* Use $id for Appwrite */}
                     {ticket.title}
                   </Link>
                 </TableCell>
@@ -165,10 +165,10 @@ export function TicketListClient({ tickets, statusTitle }: TicketListClientProps
                     {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                    </Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{formatRelativeDate(ticket.createdAt)}</TableCell> {/* Use createdAt */}
+                <TableCell className="hidden md:table-cell">{formatRelativeDate(ticket.$createdAt)}</TableCell> {/* Use $createdAt for Appwrite */}
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/tickets/view/${ticket.id}`}> {/* Use id */}
+                    <Link href={`/tickets/view/${ticket.$id}`}> {/* Use $id for Appwrite */}
                       View <ArrowUpRight className="ml-1 h-4 w-4" />
                     </Link>
                   </Button>
