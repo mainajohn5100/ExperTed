@@ -1,16 +1,13 @@
 import type { Metadata } from 'next';
-import { Geist_Sans } from 'next/font/google'; // Corrected import
+import { Inter } from 'next/font/google'; // Changed from Geist_Sans
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { SidebarProvider } from '@/components/ui/sidebar';
 
-const geistSans = Geist_Sans({ // Corrected usage
-  variable: '--font-geist-sans',
+const fontSans = Inter({ // Changed from Geist_Sans to Inter
+  variable: '--font-sans', // Using a more generic variable name
   subsets: ['latin'],
 });
-
-// Removed Geist_Mono as it's not explicitly used or requested over a single sans-serif.
-// If needed, it can be added back.
 
 export const metadata: Metadata = {
   title: 'ExperTed',
@@ -24,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} font-sans antialiased`}>
+      <body className={`${fontSans.variable} font-sans antialiased`}> {/* Using the new variable */}
         <SidebarProvider defaultOpen>
           {children}
         </SidebarProvider>

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { User, Bell, Palette, Shield } from 'lucide-react';
+import { Separator } from "@/components/ui/separator";
 
 
 export default function SettingsPage() {
@@ -95,8 +96,10 @@ export default function SettingsPage() {
                   </span>
                 </Label>
                 <Switch id="dark-mode" onCheckedChange={(checked) => {
-                  if (checked) document.documentElement.classList.add('dark');
-                  else document.documentElement.classList.remove('dark');
+                  if (typeof document !== 'undefined') { // Ensure document is defined (client-side)
+                    if (checked) document.documentElement.classList.add('dark');
+                    else document.documentElement.classList.remove('dark');
+                  }
                 }}/>
               </div>
               <p className="text-muted-foreground text-sm">More appearance settings (e.g., font size, theme accents) will be available here.</p>

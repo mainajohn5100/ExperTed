@@ -1,3 +1,4 @@
+// 'use client';
 'use client';
 
 import Link from 'next/link';
@@ -18,7 +19,8 @@ import {
   ChevronDown,
   ChevronRight,
   LucideIcon,
-  Layers
+  Layers,
+  CheckCircle2 // Added import for CheckCircle2
 } from 'lucide-react';
 import {
   Sidebar,
@@ -65,7 +67,7 @@ const projectSubItems: NavItem[] = [
   { href: '/projects/new', label: 'New Projects', icon: PlusCircle, matchExact: true },
   { href: '/projects/active', label: 'Active Projects', icon: PlayCircle, matchExact: true },
   { href: '/projects/on-hold', label: 'On Hold', icon: PauseCircle, matchExact: true },
-  { href: '/projects/completed', label: 'Completed', icon: CheckCircle2, matchExact: true }, // Assuming CheckCircle2 or similar
+  { href: '/projects/completed', label: 'Completed', icon: CheckCircle2, matchExact: true },
 ];
 
 const mainNavItems: NavItem[] = [
@@ -79,14 +81,7 @@ const bottomNavItems: NavItem[] = [
   { href: '/settings', label: 'Settings', icon: SettingsIcon, matchExact: true },
 ];
 
-// Re-import CheckCircle2 if it was intended
-const CheckCircle2 = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide lucide-check-circle-2", className)}>
-    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-    <path d="m9 12 2 2 4-4"/>
-  </svg>
-);
-
+// Removed local SVG definition for CheckCircle2 as it's now imported from lucide-react
 
 export function SidebarNav() {
   const pathname = usePathname();
