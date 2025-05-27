@@ -1,5 +1,5 @@
 
-import type { Ticket, Project, User, TicketStatusFilter, TicketDocumentStatus } from '@/types';
+import type { Ticket, Project, User, TicketStatusFilter, TicketDocumentStatus, ProjectStatusKey } from '@/types';
 import { databases, databaseId, ticketsCollectionId, Query, ID } from './appwrite';
 import { formatISO, startOfDay, endOfDay } from 'date-fns';
 
@@ -52,6 +52,19 @@ export const mockProjects: Project[] = [
   }
 ];
 
+const logAppwriteError = (context: string, error: any) => {
+  console.error(`Appwrite error in ${context}:`, error.message || error);
+  if (error.response) {
+    console.error('Appwrite error response:', JSON.stringify(error.response, null, 2));
+  }
+  if (error.code) {
+    console.error('Appwrite error code:', error.code);
+  }
+  if (error.type) {
+    console.error('Appwrite error type:', error.type);
+  }
+};
+
 // --- Ticket Functions (using Appwrite) ---
 
 export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>): Promise<Ticket> => {
@@ -64,7 +77,7 @@ export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$
     );
     return document as unknown as Ticket;
   } catch (error) {
-    console.error("Failed to create ticket in Appwrite:", error);
+    logAppwriteError("createTicketInAppwrite", error);
     throw error;
   }
 };
@@ -75,14 +88,13 @@ export const getTicketsByStatus = async (status: TicketStatusFilter): Promise<Ti
     if (status !== 'all') {
       queries.push(Query.equal('status', status as TicketDocumentStatus));
     }
-    // Add a default sort order, e.g., by creation date descending
     queries.push(Query.orderDesc('$createdAt'));
     
     const response = await databases.listDocuments(databaseId, ticketsCollectionId, queries);
     return response.documents as unknown as Ticket[];
   } catch (error) {
-    console.error(`Failed to fetch tickets with status "${status}" from Appwrite:`, error);
-    return []; // Return empty array on error
+    logAppwriteError(`getTicketsByStatus (status: "${status}")`, error);
+    return []; 
   }
 };
 
@@ -91,12 +103,11 @@ export const getTicketById = async (id: string): Promise<Ticket | undefined> => 
     const document = await databases.getDocument(databaseId, ticketsCollectionId, id);
     return document as unknown as Ticket;
   } catch (error) {
-    console.error(`Failed to fetch ticket with ID "${id}" from Appwrite:`, error);
-    // Appwrite throws an error if document not found, so catch and return undefined
+    logAppwriteError(`getTicketById (id: "${id}")`, error);
     if ((error as any).code === 404) {
         return undefined;
     }
-    throw error; // Re-throw other errors
+    throw error; 
   }
 };
 
@@ -108,27 +119,32 @@ export const getNewTicketsTodayCount = async (): Promise<number> => {
     const response = await databases.listDocuments(databaseId, ticketsCollectionId, [
       Query.greaterThanEqual('$createdAt', todayStart),
       Query.lessThanEqual('$createdAt', todayEnd),
-      // Query.equal('status', 'new'), // Count all tickets created today, regardless of current status for "New Today"
-      Query.limit(1) // We only need the total count from response.total
+      Query.limit(1) 
     ]);
     return response.total;
   } catch (error) {
-    console.error("Failed to fetch new tickets today count from Appwrite:", error);
+    logAppwriteError("getNewTicketsTodayCount", error);
     return 0;
   }
 }
 
 export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>>): Promise<Ticket | undefined> => {
   try {
+    // Ensure replies are stringified if they are objects
+    const dataToUpdate = { ...updatedFields };
+    if (dataToUpdate.replies && typeof dataToUpdate.replies !== 'string') {
+      dataToUpdate.replies = JSON.stringify(dataToUpdate.replies);
+    }
+    
     const document = await databases.updateDocument(
       databaseId,
       ticketsCollectionId,
       ticketId,
-      updatedFields
+      dataToUpdate
     );
     return document as unknown as Ticket;
   } catch (error) {
-    console.error(`Failed to update ticket ${ticketId} in Appwrite:`, error);
+    logAppwriteError(`updateTicketInAppwrite (ticketId: ${ticketId})`, error);
     if ((error as any).code === 404) {
         return undefined;
     }
