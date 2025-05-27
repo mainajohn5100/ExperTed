@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { suggestTags, SuggestTagsInput } from "@/ai/flows/suggest-tags";
 import { Loader2, Tag, Lightbulb, PlusCircle } from 'lucide-react';
-import type { Ticket, TicketPriority, TicketChannel, TicketStatus } from "@/types";
+import type { Ticket, TicketPriority, TicketChannel, TicketDocumentStatus } from "@/types";
 import { AppHeader } from "@/components/layout/header";
 import { PageTitle } from "@/components/common/page-title";
 import { createTicketInAppwrite } from '@/lib/data';
@@ -80,7 +80,6 @@ export default function NewTicketPage() {
       return;
     }
 
-    // For Appwrite, $id, $createdAt, $updatedAt are handled by Appwrite
     const newTicketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'> = {
       title,
       description,
@@ -89,7 +88,7 @@ export default function NewTicketPage() {
       priority,
       channel,
       tags: currentTags,
-      status: 'new' as TicketStatus, // Default status
+      status: 'new' as TicketDocumentStatus, // Default status, explicitly a TicketDocumentStatus
       userId: 'mock-user-id', // Placeholder for actual user ID integration
       replies: JSON.stringify([]), // Start with empty replies
     };

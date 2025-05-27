@@ -1,5 +1,5 @@
 
-import type { Ticket, Project, User, TicketStatus, ProjectStatusKey } from '@/types';
+import type { Ticket, Project, User, TicketStatusFilter, TicketDocumentStatus } from '@/types';
 import { databases, databaseId, ticketsCollectionId, Query, ID } from './appwrite';
 import { formatISO, startOfDay, endOfDay } from 'date-fns';
 
@@ -69,11 +69,11 @@ export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$
   }
 };
 
-export const getTicketsByStatus = async (status: TicketStatus): Promise<Ticket[]> => {
+export const getTicketsByStatus = async (status: TicketStatusFilter): Promise<Ticket[]> => {
   try {
     const queries = [];
     if (status !== 'all') {
-      queries.push(Query.equal('status', status));
+      queries.push(Query.equal('status', status as TicketDocumentStatus));
     }
     // Add a default sort order, e.g., by creation date descending
     queries.push(Query.orderDesc('$createdAt'));
@@ -108,8 +108,8 @@ export const getNewTicketsTodayCount = async (): Promise<number> => {
     const response = await databases.listDocuments(databaseId, ticketsCollectionId, [
       Query.greaterThanEqual('$createdAt', todayStart),
       Query.lessThanEqual('$createdAt', todayEnd),
-      Query.equal('status', 'new'), // Or just count all new tickets today regardless of current status
-      Query.limit(1) // We only need the total count
+      // Query.equal('status', 'new'), // Count all tickets created today, regardless of current status for "New Today"
+      Query.limit(1) // We only need the total count from response.total
     ]);
     return response.total;
   } catch (error) {

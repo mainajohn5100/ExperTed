@@ -1,29 +1,31 @@
 
-export type TicketStatus = "all" | "new" | "pending" | "on-hold" | "closed" | "active" | "terminated";
+export type TicketDocumentStatus = "new" | "pending" | "on-hold" | "closed" | "active" | "terminated";
+export type TicketStatusFilter = "all" | TicketDocumentStatus;
+
 export type ProjectStatusKey = "all" | "new" | "active" | "on-hold" | "completed";
 
 export interface TicketReply {
-  id: string; 
-  userId: string; 
+  id: string;
+  userId: string;
   userName: string;
   content: string;
   createdAt: string; // ISO date string
 }
 export interface Ticket {
-  $id: string; 
+  $id: string;
   title: string;
   description: string;
   customerName: string;
   customerEmail: string;
   $createdAt: string; // ISO date string
   $updatedAt: string; // ISO date string
-  status: TicketStatus;
+  status: TicketDocumentStatus; // Changed from TicketStatus
   tags: string[];
-  assignedTo?: string; 
+  assignedTo?: string;
   priority: "low" | "medium" | "high" | "urgent";
   channel: "email" | "sms" | "social-media" | "web-form" | "manual";
   replies?: string; // JSON string of TicketReply[]
-  userId: string; 
+  userId: string;
 }
 
 // Project type remains unchanged for now, using mock data

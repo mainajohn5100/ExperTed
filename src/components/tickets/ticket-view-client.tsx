@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Ticket, TicketStatus, TicketReply } from '@/types';
+import type { Ticket, TicketDocumentStatus, TicketReply } from '@/types';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,7 @@ interface TicketViewClientProps {
   ticket: Ticket;
 }
 
-const ticketStatuses: TicketStatus[] = ["new", "pending", "on-hold", "closed", "active", "terminated"];
+const ticketDocumentStatuses: TicketDocumentStatus[] = ["new", "pending", "on-hold", "closed", "active", "terminated"];
 
 export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProps) {
   const [ticket, setTicket] = useState<Ticket>(initialTicket);
@@ -51,19 +51,16 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   }, [ticket.replies]);
 
 
-  const handleTicketUpdate = async (updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt'>>) => { // Omit $createdAt for Appwrite
+  const handleTicketUpdate = async (updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt'>>) => { 
     setIsUpdating(true);
     try {
       const dataToSave = {
         ...updatedFields,
-        // Appwrite handles $updatedAt automatically, so we don't need to set it here manually.
-        // $updatedAt: new Date().toISOString(), // Not needed for Appwrite, it updates automatically
         replies: typeof updatedFields.replies === 'string' ? updatedFields.replies : JSON.stringify(updatedFields.replies || []),
       };
       
-      const updatedDoc = await updateTicketInAppwrite(ticket.$id, dataToSave); // Use Appwrite update
+      const updatedDoc = await updateTicketInAppwrite(ticket.$id, dataToSave); 
       if (updatedDoc) {
-        // Appwrite returns the updated document, so use its fields
         setTicket(updatedDoc); 
         toast({ title: "Ticket Updated", description: "Changes saved to Appwrite." });
         router.refresh();
@@ -78,8 +75,8 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
     }
   };
 
-  const handleStatusChange = (newStatus: TicketStatus) => {
-    handleTicketUpdate({ status: newStatus }); // $updatedAt handled by Appwrite
+  const handleStatusChange = (newStatus: TicketDocumentStatus) => {
+    handleTicketUpdate({ status: newStatus }); 
   };
 
   const handleSmartReply = async () => {
@@ -121,29 +118,29 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   const addTag = (tag: string) => {
     if (!ticket.tags.includes(tag)) {
       const newTags = [...ticket.tags, tag];
-      handleTicketUpdate({ tags: newTags }); // $updatedAt handled by Appwrite
+      handleTicketUpdate({ tags: newTags }); 
       setAiSuggestedTags(prev => prev.filter(t => t !== tag));
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     const newTags = ticket.tags.filter(tag => tag !== tagToRemove);
-    handleTicketUpdate({ tags: newTags }); // $updatedAt handled by Appwrite
+    handleTicketUpdate({ tags: newTags }); 
   };
 
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket) return;
     
     const newReply: TicketReply = {
-      id: `reply-${Date.now()}`, // This ID is for client-side keying, Appwrite won't store this specific ID directly in the reply object if it's just a JSON string.
-      userId: 'current-agent-id', // Placeholder
-      userName: 'Support Agent', // Placeholder
+      id: `reply-${Date.now()}`, 
+      userId: 'current-agent-id', 
+      userName: 'Support Agent', 
       content: replyContent,
       createdAt: new Date().toISOString(),
     };
 
     const updatedReplies = [...parsedReplies, newReply];
-    handleTicketUpdate({ replies: JSON.stringify(updatedReplies) }); // $updatedAt handled by Appwrite
+    handleTicketUpdate({ replies: JSON.stringify(updatedReplies) }); 
     
     setReplyContent('');
     setSuggestedReply(''); 
@@ -165,7 +162,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
                   Opened by {ticket.customerName} ({ticket.customerEmail}) via {ticket.channel}
                 </CardDescription>
               </div>
-              <Link href={`/tickets/${ticket.status === 'all' ? 'all' : ticket.status}`}>
+              <Link href={`/tickets/${ticket.status}`}> {/* status is now TicketDocumentStatus, valid for URL */}
                 <Button variant="outline" size="sm"><ArrowLeft className="mr-2 h-4 w-4" /> Back to List</Button>
               </Link>
             </div>
@@ -255,13 +252,13 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
             <Separator />
             <div className="flex justify-between items-center">
               <span>Status:</span>
-              <Select value={ticket.status} onValueChange={(val) => handleStatusChange(val as TicketStatus)} disabled={isUpdating}>
+              <Select value={ticket.status} onValueChange={(val) => handleStatusChange(val as TicketDocumentStatus)} disabled={isUpdating}>
                 <SelectTrigger className="w-[180px] h-8">
                   <SelectValue placeholder="Set status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ticketStatuses.map(s => (
-                    <SelectItem key={s} value={s} disabled={s === 'all'}>
+                  {ticketDocumentStatuses.map(s => (
+                    <SelectItem key={s} value={s}>
                       {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
                     </SelectItem>
                   ))}

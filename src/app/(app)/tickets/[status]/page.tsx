@@ -1,6 +1,6 @@
 
 import { getTicketsByStatus } from '@/lib/data';
-import type { TicketStatus } from '@/types';
+import type { TicketStatusFilter, TicketDocumentStatus } from '@/types';
 import { TicketListClient } from '@/components/tickets/ticket-list-client';
 import { PageTitle } from '@/components/common/page-title';
 import { AppHeader } from '@/components/layout/header';
@@ -16,11 +16,11 @@ export default async function TicketsByStatusPage({ params }: { params: { status
   const statusFromParams = params?.status;
 
   // Basic validation for status
-  const validStatuses: TicketStatus[] = ["all", "new", "pending", "on-hold", "closed", "active", "terminated"];
+  const validStatuses: TicketStatusFilter[] = ["all", "new", "pending", "on-hold", "closed", "active", "terminated"];
   
-  if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as TicketStatus)) {
-    const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : statusFromParams;
-    // console.error(`TicketsByStatusPage: Invalid or missing status parameter. Received: "${statusFromParams}"`);
+  if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as TicketStatusFilter)) {
+    const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
+    console.error(`TicketsByStatusPage: Invalid or missing status parameter. Received: ${displayStatus}`);
     return (
         <>
         <AppHeader title="Invalid Ticket Status" />
@@ -35,8 +35,7 @@ export default async function TicketsByStatusPage({ params }: { params: { status
     );
   }
   
-  // If we reach here, statusFromParams is a valid TicketStatus string.
-  const status = statusFromParams as TicketStatus;
+  const status = statusFromParams as TicketStatusFilter;
   const tickets = await getTicketsByStatus(status);
   const statusTitle = status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
 
