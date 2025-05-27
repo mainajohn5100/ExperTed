@@ -27,7 +27,7 @@ export default async function TicketsByStatusPage({ params, searchParams }: Tick
 
   if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as TicketStatusFilter)) {
     const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
-    console.error(`[TicketsByStatusPage] Invalid or missing status parameter. Displayed as: ${displayStatus}. Received status: ${statusFromParams}. Full params: ${JSON.stringify(params)}`);
+    console.error(`SERVER_ERROR_PATH: [TicketsByStatusPage] Invalid or missing status parameter. Displayed as: ${displayStatus}. Received status: ${statusFromParams}. Full params: ${JSON.stringify(params)}`);
     return (
         <>
         <AppHeader title="Invalid Ticket Status" />

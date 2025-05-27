@@ -3,7 +3,7 @@ import { getProjectsByStatus } from '@/lib/data';
 import type { Project, ProjectStatusKey } from '@/types';
 import { PageTitle } from '@/components/common/page-title';
 import { AppHeader } from '@/components/layout/header';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Added CardFooter
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -46,16 +46,17 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 interface ProjectsByStatusPageProps {
-  params: { projectStatusParam: string }; // Renamed from 'status'
+  params: { projectStatusParam: string }; 
 }
 
 export default async function ProjectsByStatusPage({ params }: ProjectsByStatusPageProps) {
   console.log('[ProjectsByStatusPage] Received params:', JSON.stringify(params));
-  const statusFromParams = params?.projectStatusParam; // Use new param name
+  const statusFromParams = params?.projectStatusParam; 
   const validStatuses: ProjectStatusKey[] = ["all", "new", "active", "on-hold", "completed"];
 
   if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as ProjectStatusKey)) {
      const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
+     console.error(`SERVER_ERROR_PATH: [ProjectsByStatusPage] Invalid or missing project status parameter. Displayed as: ${displayStatus}. Received status: ${statusFromParams}. Full params: ${JSON.stringify(params)}`);
      return (
         <>
         <AppHeader title="Invalid Project Status" />
@@ -79,7 +80,6 @@ export default async function ProjectsByStatusPage({ params }: ProjectsByStatusP
         {/* <Button>Create New Project</Button> */}
     </AppHeader>
     <div className="flex flex-col gap-6">
-      {/* PageTitle component was removed from here in the original, kept it that way, AppHeader provides title */}
       {projects.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground">
             <Briefcase className="mx-auto h-12 w-12 mb-4" />
