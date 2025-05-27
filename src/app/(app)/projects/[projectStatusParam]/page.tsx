@@ -50,50 +50,70 @@ interface ProjectsByStatusPageProps {
 }
 
 export default async function ProjectsByStatusPage({ params }: ProjectsByStatusPageProps) {
-  console.log('[ProjectsByStatusPage] Received params:', JSON.stringify(params));
-  const statusFromParams = params?.projectStatusParam;
-  const validStatuses: ProjectStatusKey[] = ["all", "new", "active", "on-hold", "completed"];
+  console.log('[ProjectsByStatusPage] Component loaded. Received full props:', JSON.stringify({ params }, null, 2));
+  console.log('[ProjectsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
+  
+  try {
+    const statusFromParams = params?.projectStatusParam;
+    console.log('[ProjectsByStatusPage] Extracted statusFromParams:', statusFromParams);
+    
+    const validStatuses: ProjectStatusKey[] = ["all", "new", "active", "on-hold", "completed"];
 
-  if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as ProjectStatusKey)) {
-     const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
-     const receivedParamsString = JSON.stringify(params); // For clearer error message
-     console.error(`SERVER_ERROR_PATH: [ProjectsByStatusPage] Invalid or missing project status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.projectStatusParam available? ${params?.projectStatusParam}`);
-     return (
-        <>
-        <AppHeader title="Invalid Project Status" />
+    if (typeof statusFromParams !== 'string' || !validStatuses.includes(statusFromParams as ProjectStatusKey)) {
+       const displayStatus = statusFromParams === undefined ? 'undefined (not provided)' : `"${statusFromParams}" (unrecognized)`;
+       const receivedParamsString = JSON.stringify(params); 
+       console.error(`SERVER_ERROR_PATH: [ProjectsByStatusPage] Invalid or missing project status parameter. Displayed as: ${displayStatus}. statusFromParams: ${statusFromParams}. Received full params object: ${receivedParamsString}. Is params.projectStatusParam available? ${params?.projectStatusParam}`);
+       return (
+          <>
+          <AppHeader title="Invalid Project Status" />
+          <div className="p-6">
+              <PageTitle title={`Invalid Project Status: ${displayStatus}`} />
+              <p>Please select a valid project status from the navigation. Params received: {receivedParamsString}</p>
+              <Button asChild className="mt-4">
+              <Link href="/projects/all">View All Projects</Link>
+              </Button>
+          </div>
+        </>
+      );
+    }
+
+    const projects = await getProjectsByStatus(statusFromParams as ProjectStatusKey);
+    const statusTitle = statusFromParams.charAt(0).toUpperCase() + statusFromParams.slice(1).replace('-', ' ');
+
+    return (
+      <>
+      <AppHeader title={`${statusTitle} Projects`}>
+          {/* <Button>Create New Project</Button> */}
+      </AppHeader>
+      <div className="flex flex-col gap-6">
+        {projects.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground">
+              <Briefcase className="mx-auto h-12 w-12 mb-4" />
+              <p>No projects found with status "{statusTitle}".</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        )}
+      </div>
+      </>
+    );
+  } catch (error) {
+    console.error(`[ProjectsByStatusPage] UNHANDLED EXCEPTION for params "${params?.projectStatusParam}":`, error);
+    return (
+      <>
+        <AppHeader title="Internal Server Error" />
         <div className="p-6">
-            <PageTitle title={`Invalid Project Status: ${displayStatus}`} />
-            <p>Please select a valid project status from the navigation. Params received: {receivedParamsString}</p>
-            <Button asChild className="mt-4">
-            <Link href="/projects/all">View All Projects</Link>
-            </Button>
+          <PageTitle title="Internal Server Error" />
+          <p>An unexpected error occurred while trying to load projects for status: "{params?.projectStatusParam}". Please check the server logs for more details.</p>
+           <Button asChild className="mt-4">
+            <Link href="/dashboard">Go to Dashboard</Link>
+          </Button>
         </div>
       </>
     );
   }
-
-  const projects = await getProjectsByStatus(statusFromParams as ProjectStatusKey);
-  const statusTitle = statusFromParams.charAt(0).toUpperCase() + statusFromParams.slice(1).replace('-', ' ');
-
-  return (
-    <>
-    <AppHeader title={`${statusTitle} Projects`}>
-        {/* <Button>Create New Project</Button> */}
-    </AppHeader>
-    <div className="flex flex-col gap-6">
-      {projects.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground">
-            <Briefcase className="mx-auto h-12 w-12 mb-4" />
-            <p>No projects found with status "{statusTitle}".</p>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
-      )}
-    </div>
-    </>
-  );
 }

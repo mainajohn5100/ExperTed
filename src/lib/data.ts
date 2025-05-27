@@ -53,14 +53,14 @@ export const mockProjects: Project[] = [
 ];
 
 const logAppwriteError = (context: string, error: any) => {
-  console.error(`Appwrite error in ${context}:`, error.message || error);
-  if (error.response) {
+  console.error(`Appwrite error in ${context}:`, error?.message || String(error));
+  if (error && error.response) {
     console.error('Appwrite error response details:', JSON.stringify(error.response, null, 2));
   }
-  if (error.code) {
+  if (error && error.code) {
     console.error('Appwrite error code:', error.code);
   }
-  if (error.type) {
+  if (error && error.type) {
     console.error('Appwrite error type:', error.type);
   }
   // Log the full error object if it might contain more details
@@ -71,10 +71,11 @@ const logAppwriteError = (context: string, error: any) => {
 
 // --- Ticket Functions (using Appwrite) ---
 
-export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>): Promise<Ticket> => {
+export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>): Promise<Ticket | undefined> => {
   if (!databaseId || !ticketsCollectionId) {
     console.error("Appwrite databaseId or ticketsCollectionId is missing. Check .env variables.");
-    throw new Error("Appwrite configuration is incomplete.");
+    // throw new Error("Appwrite configuration is incomplete.");
+    return undefined;
   }
   try {
     const document = await databases.createDocument(
@@ -86,7 +87,8 @@ export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$
     return document as unknown as Ticket;
   } catch (error) {
     logAppwriteError("createTicketInAppwrite", error);
-    throw error;
+    // throw error; // Re-throwing might cause unhandled rejection if not caught upstream
+    return undefined;
   }
 };
 
@@ -120,10 +122,9 @@ export const getTicketById = async (id: string): Promise<Ticket | undefined> => 
     return document as unknown as Ticket;
   } catch (error) {
     logAppwriteError(`getTicketById (id: "${id}")`, error);
-    if ((error as any).code === 404) {
+    if ((error as any)?.code === 404) { // Added optional chaining for safety
         return undefined;
     }
-    // Do not re-throw for other errors here, let the caller handle undefined
     return undefined; 
   }
 };
@@ -155,7 +156,6 @@ export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Pa
     return undefined;
   }
   try {
-    // Ensure replies are stringified if they are objects
     const dataToUpdate = { ...updatedFields };
     if (dataToUpdate.replies && typeof dataToUpdate.replies !== 'string') {
       dataToUpdate.replies = JSON.stringify(dataToUpdate.replies);
@@ -170,10 +170,9 @@ export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Pa
     return document as unknown as Ticket;
   } catch (error) {
     logAppwriteError(`updateTicketInAppwrite (ticketId: ${ticketId})`, error);
-    if ((error as any).code === 404) {
+    if ((error as any)?.code === 404) { // Added optional chaining
         return undefined;
     }
-    // Do not re-throw for other errors here, let the caller handle undefined
     return undefined;
   }
 }
@@ -192,4 +191,3 @@ export const getProjectById = async (id: string): Promise<Project | undefined> =
   await new Promise(resolve => setTimeout(resolve, 50));
   return mockProjects.find(project => project.id === id);
 };
-
