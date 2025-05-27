@@ -55,7 +55,7 @@ export const mockProjects: Project[] = [
 const logAppwriteError = (context: string, error: any) => {
   console.error(`Appwrite error in ${context}:`, error.message || error);
   if (error.response) {
-    console.error('Appwrite error response:', JSON.stringify(error.response, null, 2));
+    console.error('Appwrite error response details:', JSON.stringify(error.response, null, 2));
   }
   if (error.code) {
     console.error('Appwrite error code:', error.code);
@@ -63,11 +63,19 @@ const logAppwriteError = (context: string, error: any) => {
   if (error.type) {
     console.error('Appwrite error type:', error.type);
   }
+  // Log the full error object if it might contain more details
+  if (typeof error === 'object' && error !== null) {
+    console.error('Full Appwrite error object:', error);
+  }
 };
 
 // --- Ticket Functions (using Appwrite) ---
 
 export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>): Promise<Ticket> => {
+  if (!databaseId || !ticketsCollectionId) {
+    console.error("Appwrite databaseId or ticketsCollectionId is missing. Check .env variables.");
+    throw new Error("Appwrite configuration is incomplete.");
+  }
   try {
     const document = await databases.createDocument(
       databaseId,
@@ -83,6 +91,10 @@ export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$
 };
 
 export const getTicketsByStatus = async (status: TicketStatusFilter): Promise<Ticket[]> => {
+  if (!databaseId || !ticketsCollectionId) {
+    console.error("Appwrite databaseId or ticketsCollectionId is missing. Check .env variables.");
+    return [];
+  }
   try {
     const queries = [];
     if (status !== 'all') {
@@ -99,6 +111,10 @@ export const getTicketsByStatus = async (status: TicketStatusFilter): Promise<Ti
 };
 
 export const getTicketById = async (id: string): Promise<Ticket | undefined> => {
+  if (!databaseId || !ticketsCollectionId) {
+    console.error("Appwrite databaseId or ticketsCollectionId is missing. Check .env variables.");
+    return undefined;
+  }
   try {
     const document = await databases.getDocument(databaseId, ticketsCollectionId, id);
     return document as unknown as Ticket;
@@ -107,11 +123,16 @@ export const getTicketById = async (id: string): Promise<Ticket | undefined> => 
     if ((error as any).code === 404) {
         return undefined;
     }
-    throw error; 
+    // Do not re-throw for other errors here, let the caller handle undefined
+    return undefined; 
   }
 };
 
 export const getNewTicketsTodayCount = async (): Promise<number> => {
+  if (!databaseId || !ticketsCollectionId) {
+    console.error("Appwrite databaseId or ticketsCollectionId is missing. Check .env variables.");
+    return 0;
+  }
   try {
     const todayStart = formatISO(startOfDay(new Date()));
     const todayEnd = formatISO(endOfDay(new Date()));
@@ -119,7 +140,7 @@ export const getNewTicketsTodayCount = async (): Promise<number> => {
     const response = await databases.listDocuments(databaseId, ticketsCollectionId, [
       Query.greaterThanEqual('$createdAt', todayStart),
       Query.lessThanEqual('$createdAt', todayEnd),
-      Query.limit(1) 
+      Query.limit(1) // We only need the total count
     ]);
     return response.total;
   } catch (error) {
@@ -129,6 +150,10 @@ export const getNewTicketsTodayCount = async (): Promise<number> => {
 }
 
 export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>>): Promise<Ticket | undefined> => {
+  if (!databaseId || !ticketsCollectionId) {
+    console.error("Appwrite databaseId or ticketsCollectionId is missing. Check .env variables.");
+    return undefined;
+  }
   try {
     // Ensure replies are stringified if they are objects
     const dataToUpdate = { ...updatedFields };
@@ -148,17 +173,23 @@ export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Pa
     if ((error as any).code === 404) {
         return undefined;
     }
-    throw error;
+    // Do not re-throw for other errors here, let the caller handle undefined
+    return undefined;
   }
 }
 
 
 // --- Project Functions (still using mock data) ---
 export const getProjectsByStatus = async (status: ProjectStatusKey): Promise<Project[]> => {
+  // Simulate async behavior
+  await new Promise(resolve => setTimeout(resolve, 50)); 
   if (status === 'all') return mockProjects;
   return mockProjects.filter(project => project.status === status);
 };
 
 export const getProjectById = async (id: string): Promise<Project | undefined> => {
+  // Simulate async behavior
+  await new Promise(resolve => setTimeout(resolve, 50));
   return mockProjects.find(project => project.id === id);
 };
+
