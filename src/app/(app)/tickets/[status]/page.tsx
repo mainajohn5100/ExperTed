@@ -1,3 +1,4 @@
+
 // This file is deprecated and should be deleted.
 // The correct dynamic route is now /src/app/(app)/tickets/[ticketStateParam]/page.tsx
 // Please ensure this file and its parent directory "[status]" are removed.
