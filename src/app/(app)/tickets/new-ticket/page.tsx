@@ -1,3 +1,4 @@
+
 'use client'; // Needs to be a client component for form handling and AI calls
 
 import { useState } from 'react';
@@ -78,7 +79,8 @@ export default function NewTicketPage() {
       return;
     }
 
-    const newTicket: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'replies' | 'assignedTo' | 'userId'> & { status: TicketStatus } = {
+    const completeNewTicket: Ticket = {
+      id: `TICK-${Date.now().toString().slice(-5)}`, // Simple unique ID for mock purposes
       title,
       description,
       customerName,
@@ -86,21 +88,25 @@ export default function NewTicketPage() {
       priority,
       channel,
       tags: currentTags,
-      status: 'new', // Default status for new tickets
+      status: 'new', 
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: 'mock-user-id', // Placeholder for the user who created/owns the ticket
+      // assignedTo: undefined, // Optional, can be set later
+      // replies: [], // Optional, will be empty initially
     };
 
     // In a real app, this would be an API call to save the ticket
-    console.log("New Ticket Data:", newTicket);
+    console.log("New Ticket Data (mock, not persisted):", completeNewTicket);
     
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    toast({ title: "Ticket Created", description: `Ticket "${title}" has been successfully created.` });
+    toast({ title: "Ticket Created", description: `Ticket "${completeNewTicket.title}" has been (mock) created.` });
     setIsSubmitting(false);
-    // Optionally redirect or clear form
-    // router.push('/tickets/all'); 
-    // For now, just show toast and user can navigate away
-    // Reset form could be added here.
+    
+    // Redirect to dashboard
+    router.push('/dashboard'); 
   };
 
   return (

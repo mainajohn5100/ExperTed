@@ -60,7 +60,7 @@ const ticketSubItems: NavItem[] = [
   { href: '/tickets/closed', label: 'Closed', icon: Archive, matchExact: true },
   { href: '/tickets/active', label: 'Active Tickets', icon: PlayCircle, matchExact: true },
   { href: '/tickets/terminated', label: 'Terminated', icon: Ban, matchExact: true },
-];
+]; 
 
 const projectSubItems: NavItem[] = [
   { href: '/projects/all', label: 'All Projects', icon: List, matchExact: true },
