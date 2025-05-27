@@ -3,7 +3,7 @@
 
 import type { Ticket, TicketStatus, TicketReply } from '@/types';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { getSmartReplies, SmartRepliesInput } from '@/ai/flows/smart-replies';
 import { suggestTags, SuggestTagsInput } from '@/ai/flows/suggest-tags';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { databases, databaseId, ticketsCollectionId } from '@/lib/appwrite'; // Import Appwrite
+import { updateTicket } from '@/lib/data'; // Import generic updateTicket
 
 interface TicketViewClientProps {
   ticket: Ticket;
@@ -30,7 +30,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   const [ticket, setTicket] = useState<Ticket>(initialTicket);
   const [replyContent, setReplyContent] = useState('');
   const [suggestedReply, setSuggestedReply] = useState('');
-  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]); // Renamed to avoid conflict
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
   const [isSmartReplyLoading, setIsSmartReplyLoading] = useState(false);
   const [isTagSuggestionLoading, setIsTagSuggestionLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -51,36 +51,26 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   }, [ticket.replies]);
 
 
-  const updateTicketInAppwrite = async (updatedFields: Partial<Ticket>) => {
+  const handleTicketUpdate = async (updatedFields: Partial<Ticket>) => {
     setIsUpdating(true);
     try {
-      const currentTicketData = { ...ticket, ...updatedFields };
-      // Ensure replies is a string before sending to Appwrite
+      // Ensure replies is a string before sending
       const dataToSave = {
-        ...currentTicketData,
-        replies: typeof currentTicketData.replies === 'string' ? currentTicketData.replies : JSON.stringify(currentTicketData.replies || []),
+        ...updatedFields,
+        replies: typeof updatedFields.replies === 'string' ? updatedFields.replies : JSON.stringify(updatedFields.replies || []),
       };
-      // Remove Appwrite system fields if they are accidentally included in updatedFields
-      delete (dataToSave as any).$id;
-      delete (dataToSave as any).$createdAt;
-      delete (dataToSave as any).$updatedAt;
-      delete (dataToSave as any).$collectionId;
-      delete (dataToSave as any).$databaseId;
-      delete (dataToSave as any).$permissions;
-
-
-      const updatedDoc = await databases.updateDocument(
-        databaseId,
-        ticketsCollectionId,
-        ticket.$id,
-        dataToSave
-      );
-      setTicket(updatedDoc as unknown as Ticket);
-      toast({ title: "Ticket Updated", description: "Changes have been saved to the database." });
-      router.refresh(); // Refresh server components
+      
+      const updatedDoc = await updateTicket(ticket.id, dataToSave);
+      if (updatedDoc) {
+        setTicket(updatedDoc);
+        toast({ title: "Ticket Update Attempted", description: "Changes processing. (Backend not fully implemented for PostgreSQL)" });
+        router.refresh();
+      } else {
+        toast({ variant: "destructive", title: "Update Failed", description: "Could not find ticket to update or backend error." });
+      }
     } catch (error) {
-      console.error("Error updating ticket in Appwrite:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not save changes to the database." });
+      console.error("Error updating ticket:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: (error as Error).message || "Could not save changes." });
     } finally {
       setIsUpdating(false);
     }
@@ -88,7 +78,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
 
 
   const handleStatusChange = (newStatus: TicketStatus) => {
-    updateTicketInAppwrite({ status: newStatus, $updatedAt: new Date().toISOString() });
+    handleTicketUpdate({ status: newStatus, updatedAt: new Date().toISOString() });
   };
 
   const handleSmartReply = async () => {
@@ -130,29 +120,29 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   const addTag = (tag: string) => {
     if (!ticket.tags.includes(tag)) {
       const newTags = [...ticket.tags, tag];
-      updateTicketInAppwrite({ tags: newTags });
+      handleTicketUpdate({ tags: newTags, updatedAt: new Date().toISOString() });
       setAiSuggestedTags(prev => prev.filter(t => t !== tag));
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     const newTags = ticket.tags.filter(tag => tag !== tagToRemove);
-    updateTicketInAppwrite({ tags: newTags });
+    handleTicketUpdate({ tags: newTags, updatedAt: new Date().toISOString() });
   };
 
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket) return;
     
     const newReply: TicketReply = {
-      id: `reply-${Date.now()}`, // Simple ID for client-side
+      id: `reply-${Date.now()}`,
       userId: 'current-agent-id', 
-      userName: 'Support Agent', // Placeholder
+      userName: 'Support Agent',
       content: replyContent,
       createdAt: new Date().toISOString(),
     };
 
     const updatedReplies = [...parsedReplies, newReply];
-    updateTicketInAppwrite({ replies: JSON.stringify(updatedReplies), $updatedAt: new Date().toISOString() });
+    handleTicketUpdate({ replies: JSON.stringify(updatedReplies), updatedAt: new Date().toISOString() });
     
     setReplyContent('');
     setSuggestedReply(''); 
@@ -179,7 +169,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
               </Link>
             </div>
             <div className="text-sm text-muted-foreground mt-2">
-              Created: {new Date(ticket.$createdAt).toLocaleString()} | Last Updated: {new Date(ticket.$updatedAt).toLocaleString()}
+              Created: {new Date(ticket.createdAt).toLocaleString()} | Last Updated: {new Date(ticket.updatedAt).toLocaleString()}
             </div>
           </CardHeader>
           <CardContent>
@@ -260,7 +250,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
             <CardTitle>Ticket Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between"><span>ID:</span> <span className="font-mono">{ticket.$id}</span></div>
+            <div className="flex justify-between"><span>ID:</span> <span className="font-mono">{ticket.id}</span></div>
             <Separator />
             <div className="flex justify-between items-center">
               <span>Status:</span>

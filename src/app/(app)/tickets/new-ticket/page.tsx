@@ -17,7 +17,7 @@ import { Loader2, Tag, Lightbulb, PlusCircle } from 'lucide-react';
 import type { Ticket, TicketPriority, TicketChannel, TicketStatus } from "@/types";
 import { AppHeader } from "@/components/layout/header";
 import { PageTitle } from "@/components/common/page-title";
-import { createTicketInAppwrite } from '@/lib/data'; // Import Appwrite function
+import { createTicket } from '@/lib/data'; // Changed from createTicketInAppwrite
 
 const priorities: TicketPriority[] = ["low", "medium", "high", "urgent"];
 const channels: TicketChannel[] = ["email", "sms", "social-media", "web-form", "manual"];
@@ -80,8 +80,7 @@ export default function NewTicketPage() {
       return;
     }
 
-    // Prepare ticket data for Appwrite (excluding Appwrite-generated fields)
-    const newTicketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'> = {
+    const newTicketData: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'> = {
       title,
       description,
       customerName,
@@ -89,19 +88,19 @@ export default function NewTicketPage() {
       priority,
       channel,
       tags: currentTags,
-      status: 'new' as TicketStatus, // Ensure status is of correct type
-      userId: 'mock-user-id', // Placeholder, replace with actual user ID if auth is implemented
-      replies: JSON.stringify([]), // Initialize with empty replies array as JSON string
+      status: 'new' as TicketStatus,
+      userId: 'mock-user-id', 
+      replies: JSON.stringify([]),
     };
 
     try {
-      const createdTicket = await createTicketInAppwrite(newTicketData);
-      toast({ title: "Ticket Created", description: `Ticket "${createdTicket.title}" has been created successfully.` });
-      router.refresh(); // Refresh server components to reflect new data
+      const createdTicket = await createTicket(newTicketData); // Changed from createTicketInAppwrite
+      toast({ title: "Ticket Creation Attempted", description: `Ticket "${createdTicket.title}" processing. (Backend not fully implemented for PostgreSQL)` });
+      router.refresh(); 
       router.push('/dashboard'); 
     } catch (error) {
       console.error("Failed to create ticket:", error);
-      toast({ variant: "destructive", title: "Creation Failed", description: "Could not create the ticket in the database." });
+      toast({ variant: "destructive", title: "Creation Failed", description: (error as Error).message || "Could not process the ticket creation." });
     } finally {
       setIsSubmitting(false);
     }
