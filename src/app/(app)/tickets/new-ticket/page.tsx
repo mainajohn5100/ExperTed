@@ -88,18 +88,26 @@ export default function NewTicketPage() {
       priority,
       channel,
       tags: currentTags,
-      status: 'new' as TicketDocumentStatus, // Default status, explicitly a TicketDocumentStatus
-      userId: 'mock-user-id', // Placeholder for actual user ID integration
-      replies: JSON.stringify([]), // Start with empty replies
+      status: 'new' as TicketDocumentStatus, 
+      userId: 'mock-user-id', 
+      replies: JSON.stringify([]), 
     };
+    
+    console.log("Attempting to create ticket with data:", JSON.stringify(newTicketData, null, 2));
 
     try {
       const createdTicket = await createTicketInAppwrite(newTicketData);
-      toast({ title: "Ticket Created", description: `Ticket "${createdTicket.title}" has been successfully created in Appwrite.` });
-      router.refresh(); // Refresh current route or any data on the page
-      router.push('/dashboard'); // Redirect to dashboard
+      if (createdTicket) {
+        toast({ title: "Ticket Created", description: `Ticket "${createdTicket.title}" has been successfully created in Appwrite.` });
+        router.refresh(); 
+        router.push('/dashboard'); 
+      } else {
+        // This case might occur if createTicketInAppwrite returns undefined on failure, instead of throwing
+        toast({ variant: "destructive", title: "Creation Failed", description: "Could not create the ticket in Appwrite. Function returned undefined." });
+      }
     } catch (error) {
       console.error("Failed to create ticket in Appwrite:", error);
+      // The logAppwriteError in data.ts will also log this, but good to have it here too.
       toast({ variant: "destructive", title: "Creation Failed", description: (error as Error).message || "Could not create the ticket in Appwrite." });
     } finally {
       setIsSubmitting(false);
@@ -218,3 +226,4 @@ export default function NewTicketPage() {
     </>
   );
 }
+
