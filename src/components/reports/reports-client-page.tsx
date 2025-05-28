@@ -6,12 +6,13 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Brain, Download as DownloadIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { summarizeAllReports, SummarizeAllReportsInput } from '@/ai/flows/summarize-all-reports-flow'; // Corrected import
+import { summarizeAllReports, SummarizeAllReportsInput } from '@/ai/flows/summarize-all-reports-flow';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { MonthlyTicketVolumeReportChart } from '@/components/charts/monthly-ticket-volume-report-chart';
+import { MonthlyTicketVolumeReportChart } from '@/components/charts/monthly-ticket-volume-report-chart'; // This is actually MonthlyTicketStatusDistributionChart
 import { ProjectStatusReportChart } from '@/components/charts/project-status-report-chart';
 import { CsatReportChart } from '@/components/charts/csat-report-chart';
-import { MonthlyStatusBreakdownChart } from '@/components/charts/monthly-status-breakdown-chart';
+import { MonthlyStatusBreakdownChart } from '@/components/charts/monthly-status-breakdown-chart'; // This is Yearly Ticket Trends
+import { AverageTicketResolutionTimeReportChart } from '@/components/charts/average-ticket-resolution-time-report-chart'; // New chart
 import { PageTitle } from '@/components/common/page-title';
 
 interface ReportsClientPageProps {
@@ -73,7 +74,7 @@ export function ReportsClientPage({ allTickets, allProjects }: ReportsClientPage
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
       <PageTitle title="Reporting Overview">
-        <Button onClick={handleGenerateSummary} disabled={isSummaryLoading || allTickets.length === 0 && allProjects.length === 0}>
+        <Button onClick={handleGenerateSummary} disabled={isSummaryLoading || (allTickets.length === 0 && allProjects.length === 0)}>
           {isSummaryLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
           Generate AI Summary of All Reports
         </Button>
@@ -93,13 +94,23 @@ export function ReportsClientPage({ allTickets, allProjects }: ReportsClientPage
       )}
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <MonthlyTicketVolumeReportChart tickets={allTickets} />
+        {/* 1. Monthly Ticket Status Distribution (was MonthlyTicketVolumeReportChart) */}
+        <MonthlyTicketVolumeReportChart tickets={allTickets} /> 
+        
+        {/* 2. Average Ticket Resolution Time Report Chart (New) */}
+        <AverageTicketResolutionTimeReportChart />
+
+        {/* 3. Projects by Status Report Chart */}
         <ProjectStatusReportChart projects={allProjects} />
+
+        {/* 4. Yearly Ticket Trends (was MonthlyStatusBreakdownChart) */}
+        <div className="lg:col-span-2">
+           <MonthlyStatusBreakdownChart tickets={allTickets} />
+        </div>
+        
+        {/* 5. Customer Satisfaction (CSAT) Report Chart (At the bottom) */}
         <div className="lg:col-span-2">
           <CsatReportChart />
-        </div>
-        <div className="lg:col-span-2">
-          <MonthlyStatusBreakdownChart tickets={allTickets} />
         </div>
       </div>
       
