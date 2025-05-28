@@ -14,7 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AppHeader } from '@/components/layout/header';
 import { PageTitle } from '@/components/common/page-title';
 import { useToast } from "@/hooks/use-toast";
-import { createProjectInAppwrite } from '@/lib/data';
+import { createProjectInAppwrite, createNotification } from '@/lib/data';
+import { notifyAdmin, AdminNotificationInput } from "@/ai/flows/notify-admin-flow";
 import type { Project, ProjectDocumentStatus } from '@/types';
 import { ArrowLeft, CalendarIcon, Loader2, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -22,6 +23,7 @@ import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const projectStatuses: ProjectDocumentStatus[] = ["new", "active", "on-hold", "completed"];
+const ADMIN_USER_ID = "admin_user"; // Placeholder
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -31,6 +33,29 @@ export default function NewProjectPage() {
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<ProjectDocumentStatus>('new');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const triggerAdminNotification = async (projectId: string, projectTitle: string, eventDetails: string) => {
+    try {
+      const notificationInput: AdminNotificationInput = {
+        ticketId: projectId, // Using ticketId field for project ID as flow expects it
+        eventType: 'new_ticket', // Re-using 'new_ticket' event type, consider 'new_project'
+        details: eventDetails,
+        ticketTitle: projectTitle, // Using ticketTitle for project title
+      };
+      const notificationResult = await notifyAdmin(notificationInput);
+      if (notificationResult.sent && notificationResult.notificationMessage) {
+        await createNotification({
+          userId: ADMIN_USER_ID,
+          message: notificationResult.notificationMessage,
+          href: `/projects/view/${projectId}`, 
+        });
+        console.log("Admin notification created for new project:", projectId);
+      }
+    } catch (error) {
+      console.error("Failed to send/store admin notification for project:", error);
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,8 +71,8 @@ export default function NewProjectPage() {
       name,
       description,
       status,
-      deadline: deadline ? deadline.toISOString() : null, // Ensure deadline is ISO string or null
-      teamMembers: [], // Placeholder for team members
+      deadline: deadline ? deadline.toISOString() : null, 
+      teamMembers: [], 
     };
     
     console.log("Attempting to create project with data:", JSON.stringify(newProjectData, null, 2));
@@ -56,6 +81,10 @@ export default function NewProjectPage() {
       const createdProject = await createProjectInAppwrite(newProjectData);
       if (createdProject) {
         toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
+        
+        // Trigger admin notification
+        triggerAdminNotification(createdProject.$id, createdProject.name, `New project "${createdProject.name}" created.`);
+
         router.refresh(); 
         router.push('/projects/all'); 
       } else {
@@ -132,11 +161,6 @@ export default function NewProjectPage() {
                   </Popover>
                 </div>
               </div>
-              {/* Placeholder for team members selection - to be implemented later */}
-              {/* <div className="space-y-2">
-                <Label htmlFor="teamMembers">Team Members (Optional)</Label>
-                <Input id="teamMembers" placeholder="Search or select team members..." />
-              </div> */}
             </CardContent>
             <CardFooter>
               <Button type="submit" className="ml-auto" disabled={isSubmitting}>

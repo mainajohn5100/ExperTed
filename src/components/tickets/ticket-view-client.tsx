@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Ticket, TicketDocumentStatus, TicketReply } from '@/types';
+import type { Ticket, TicketDocumentStatus, TicketReply, AppNotification } from '@/types';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,15 +16,17 @@ import { ArrowLeft, Bot, Tag, Send, RefreshCw, Loader2, Lightbulb } from 'lucide
 import Link from 'next/link';
 import { getSmartReplies, SmartRepliesInput } from '@/ai/flows/smart-replies';
 import { suggestTags, SuggestTagsInput } from '@/ai/flows/suggest-tags';
+import { notifyAdmin, AdminNotificationInput } from '@/ai/flows/notify-admin-flow';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { updateTicketInAppwrite } from '@/lib/data'; // Use Appwrite update function
+import { updateTicketInAppwrite, createNotification } from '@/lib/data'; 
 
 interface TicketViewClientProps {
   ticket: Ticket;
 }
 
 const ticketDocumentStatuses: TicketDocumentStatus[] = ["new", "pending", "on-hold", "closed", "active", "terminated"];
+const ADMIN_USER_ID = "admin_user"; // Placeholder
 
 export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProps) {
   const [ticket, setTicket] = useState<Ticket>(initialTicket);
@@ -58,8 +60,29 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
     }
   }, [ticket.replies]);
 
+  const triggerAdminNotification = async (ticketId: string, ticketTitle: string, eventType: AdminNotificationInput['eventType'], eventDetails: string) => {
+    try {
+      const notificationInput: AdminNotificationInput = {
+        ticketId,
+        eventType,
+        details: eventDetails,
+        ticketTitle,
+      };
+      const notificationResult = await notifyAdmin(notificationInput);
+      if (notificationResult.sent && notificationResult.notificationMessage) {
+        await createNotification({
+          userId: ADMIN_USER_ID,
+          message: notificationResult.notificationMessage,
+          href: `/tickets/view/${ticketId}`,
+        });
+        console.log(`Admin notification created for ${eventType} on ticket:`, ticketId);
+      }
+    } catch (error) {
+      console.error("Failed to send/store admin notification:", error);
+    }
+  };
 
-  const handleTicketUpdate = async (updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt'>>) => { 
+  const handleTicketUpdate = async (updatedFields: Partial<Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>>, oldStatus?: TicketDocumentStatus) => { 
     setIsUpdating(true);
     try {
       const dataToSave = {
@@ -69,8 +92,9 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
       
       const updatedDoc = await updateTicketInAppwrite(ticket.$id, dataToSave); 
       if (updatedDoc) {
+        const oldTicketData = { ...ticket }; // Preserve old ticket data for comparison
         setTicket(updatedDoc); 
-        // Update formatted dates if the document was updated
+        
         if (updatedDoc.$createdAt) {
           setFormattedCreatedAt(new Date(updatedDoc.$createdAt).toLocaleString());
         }
@@ -78,6 +102,17 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
           setFormattedUpdatedAt(new Date(updatedDoc.$updatedAt).toLocaleString());
         }
         toast({ title: "Ticket Updated", description: "Changes saved to Appwrite." });
+        
+        // Trigger notification for status change
+        if (updatedFields.status && oldStatus && updatedFields.status !== oldStatus) {
+          triggerAdminNotification(updatedDoc.$id, updatedDoc.title, 'status_change', `Status changed from ${oldStatus} to ${updatedFields.status}.`);
+        }
+        // Trigger notification for new reply (assuming replies are only added via this handler for now)
+        if (updatedFields.replies && JSON.parse(updatedFields.replies as string).length > parsedReplies.length) {
+             triggerAdminNotification(updatedDoc.$id, updatedDoc.title, 'new_reply', `A new reply was added.`);
+        }
+
+
         router.refresh();
       } else {
         toast({ variant: "destructive", title: "Update Failed", description: "Could not find ticket to update or Appwrite error." });
@@ -91,7 +126,8 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   };
 
   const handleStatusChange = (newStatus: TicketDocumentStatus) => {
-    handleTicketUpdate({ status: newStatus }); 
+    const oldStatus = ticket.status;
+    handleTicketUpdate({ status: newStatus }, oldStatus); 
   };
 
   const handleSmartReply = async () => {
@@ -148,8 +184,8 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
     
     const newReply: TicketReply = {
       id: `reply-${Date.now()}`, 
-      userId: 'current-agent-id', 
-      userName: 'Support Agent', 
+      userId: 'current-agent-id', // Replace with actual agent ID
+      userName: 'Support Agent', // Replace with actual agent name
       content: replyContent,
       createdAt: new Date().toISOString(),
     };
@@ -177,7 +213,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
                   Opened by {ticket.customerName} ({ticket.customerEmail}) via {ticket.channel}
                 </CardDescription>
               </div>
-              <Link href={`/tickets/${ticket.status}`}> {/* status is now TicketDocumentStatus, valid for URL */}
+              <Link href={`/tickets/${ticket.status}`}> 
                 <Button variant="outline" size="sm"><ArrowLeft className="mr-2 h-4 w-4" /> Back to List</Button>
               </Link>
             </div>

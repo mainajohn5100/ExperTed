@@ -50,3 +50,12 @@ export interface User {
 export type TicketPriority = Ticket['priority'];
 export type TicketChannel = Ticket['channel'];
 
+export interface AppNotification {
+  $id: string;
+  userId: string; // To whom the notification belongs
+  message: string;
+  href?: string; // Optional link for navigation
+  isRead: boolean;
+  $createdAt: string; // ISO date string
+  $updatedAt: string; // ISO date string
+}

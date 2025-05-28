@@ -13,14 +13,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { suggestTags, SuggestTagsInput } from "@/ai/flows/suggest-tags";
+import { notifyAdmin, AdminNotificationInput } from "@/ai/flows/notify-admin-flow";
 import { Loader2, Tag, Lightbulb, PlusCircle } from 'lucide-react';
 import type { Ticket, TicketPriority, TicketChannel, TicketDocumentStatus } from "@/types";
 import { AppHeader } from "@/components/layout/header";
 import { PageTitle } from "@/components/common/page-title";
-import { createTicketInAppwrite } from '@/lib/data';
+import { createTicketInAppwrite, createNotification } from '@/lib/data';
 
 const priorities: TicketPriority[] = ["low", "medium", "high", "urgent"];
 const channels: TicketChannel[] = ["email", "sms", "social-media", "web-form", "manual"];
+const ADMIN_USER_ID = "admin_user"; // Placeholder for actual admin user ID
 
 export default function NewTicketPage() {
   const router = useRouter();
@@ -70,6 +72,29 @@ export default function NewTicketPage() {
     setCurrentTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
+  const triggerAdminNotification = async (ticketId: string, ticketTitle: string, eventDetails: string) => {
+    try {
+      const notificationInput: AdminNotificationInput = {
+        ticketId,
+        eventType: 'new_ticket',
+        details: eventDetails,
+        ticketTitle,
+      };
+      const notificationResult = await notifyAdmin(notificationInput);
+      if (notificationResult.sent && notificationResult.notificationMessage) {
+        await createNotification({
+          userId: ADMIN_USER_ID, // Target user for the notification
+          message: notificationResult.notificationMessage,
+          href: `/tickets/view/${ticketId}`,
+        });
+        console.log("Admin notification created for new ticket:", ticketId);
+      }
+    } catch (error) {
+      console.error("Failed to send/store admin notification:", error);
+      // Optionally toast a silent failure or log, as primary action (ticket creation) succeeded
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -89,7 +114,7 @@ export default function NewTicketPage() {
       channel,
       tags: currentTags,
       status: 'new' as TicketDocumentStatus, 
-      userId: 'mock-user-id', 
+      userId: 'mock-user-id', // Replace with actual user ID if auth is implemented
       replies: JSON.stringify([]), 
     };
     
@@ -99,15 +124,17 @@ export default function NewTicketPage() {
       const createdTicket = await createTicketInAppwrite(newTicketData);
       if (createdTicket) {
         toast({ title: "Ticket Created", description: `Ticket "${createdTicket.title}" has been successfully created in Appwrite.` });
+        
+        // Trigger admin notification (fire-and-forget for now)
+        triggerAdminNotification(createdTicket.$id, createdTicket.title, `New ticket created by ${customerName}.`);
+
         router.refresh(); 
         router.push('/dashboard'); 
       } else {
-        // This case might occur if createTicketInAppwrite returns undefined on failure, instead of throwing
         toast({ variant: "destructive", title: "Creation Failed", description: "Could not create the ticket in Appwrite. Function returned undefined." });
       }
     } catch (error) {
       console.error("Failed to create ticket in Appwrite:", error);
-      // The logAppwriteError in data.ts will also log this, but good to have it here too.
       toast({ variant: "destructive", title: "Creation Failed", description: (error as Error).message || "Could not create the ticket in Appwrite." });
     } finally {
       setIsSubmitting(false);
@@ -226,4 +253,3 @@ export default function NewTicketPage() {
     </>
   );
 }
-
