@@ -5,8 +5,10 @@ import * as React from 'react';
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { MoreVertical, Printer, Download } from 'lucide-react';
 
-// Mock CSAT Data
 const mockCsatData = [
   { month: 'Jan', score: 4.2, responses: 50 },
   { month: 'Feb', score: 4.5, responses: 65 },
@@ -19,21 +21,36 @@ const mockCsatData = [
 const chartConfig = {
   score: {
     label: 'CSAT Score',
-    color: 'hsl(var(--chart-2))', // Using chart-2 color
+    color: 'hsl(var(--chart-2))',
   },
 } satisfies ChartConfig;
 
 export function CsatReportChart() {
-  // In a real app, this data would be fetched or passed as props
-  const [csatData] = React.useState(mockCsatData);
+  console.log('[CsatReportChart] Rendering...');
+  const [csatData] = React.useState(mockCsatData); // Still using mock data
+
+  const handlePrint = () => window.print();
+  const handleDownload = () => alert('Download functionality to be implemented.');
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Customer Satisfaction (CSAT)</CardTitle>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="h-4 w-4" /> <span className="sr-only">More options</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={handlePrint}><Printer className="mr-2 h-4 w-4" />Print</DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleDownload}><Download className="mr-2 h-4 w-4" />Download</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+        <p className="text-xs text-muted-foreground mb-2">Note: This chart currently uses mock data.</p>
+        <ChartContainer config={chartConfig} className="h-[276px] w-full"> {/* Adjusted height for note */}
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={csatData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -42,7 +59,7 @@ export function CsatReportChart() {
                 tickLine={false} 
                 axisLine={false} 
                 tickMargin={8} 
-                domain={[0, 5]} // Assuming CSAT score is out of 5
+                domain={[0, 5]} 
                 allowDecimals={true} 
               />
               <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
