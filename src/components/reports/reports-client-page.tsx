@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Brain, Download as DownloadIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { summarizeAllReports, SummarizeAllReportsInput } from '@/ai/flows/summarize-all-reports-flow.ts';
+import { summarizeAllReports, SummarizeAllReportsInput } from '@/ai/flows/summarize-all-reports-flow'; // Corrected import
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MonthlyTicketVolumeReportChart } from '@/components/charts/monthly-ticket-volume-report-chart';
 import { ProjectStatusReportChart } from '@/components/charts/project-status-report-chart';
@@ -52,7 +52,7 @@ export function ReportsClientPage({ allTickets, allProjects }: ReportsClientPage
       toast({ title: 'AI Summary Generated', description: 'The report summary has been created.' });
     } catch (error) {
       console.error('Error generating AI summary:', error);
-      toast({ variant: 'destructive', title: 'AI Summary Error', description: 'Could not generate report summary.' });
+      toast({ variant: 'destructive', title: 'AI Summary Error', description: (error instanceof Error ? error.message : String(error)) || 'Could not generate report summary.' });
     } finally {
       setIsSummaryLoading(false);
     }
@@ -73,7 +73,7 @@ export function ReportsClientPage({ allTickets, allProjects }: ReportsClientPage
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
       <PageTitle title="Reporting Overview">
-        <Button onClick={handleGenerateSummary} disabled={isSummaryLoading}>
+        <Button onClick={handleGenerateSummary} disabled={isSummaryLoading || allTickets.length === 0 && allProjects.length === 0}>
           {isSummaryLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
           Generate AI Summary of All Reports
         </Button>
