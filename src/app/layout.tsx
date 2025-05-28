@@ -1,7 +1,6 @@
 
 'use client'; // Make root layout client to use ThemeApplicator which uses useAuth hook
 
-import type { Metadata } from 'next'; // Metadata can still be defined
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -13,11 +12,7 @@ const fontSans = Inter({
   subsets: ['latin'],
 });
 
-// Static metadata - this is fine even in a client component root layout
-export const metadata: Metadata = {
-  title: 'ExperTed',
-  description: 'ExperTed - Smart Helpdesk Solution',
-};
+// Removed: export const metadata: Metadata = { ... };
 
 export default function RootLayout({
   children,
@@ -26,6 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>ExperTed</title>
+        <meta name="description" content="ExperTed - Smart Helpdesk Solution" />
+      </head>
       <body className={`${fontSans.variable} font-sans antialiased`}>
         <AuthProvider>
           <ThemeApplicator /> {/* Apply theme and font size based on user prefs */}
