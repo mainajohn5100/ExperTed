@@ -10,7 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { updateProjectInAppwrite } from '@/lib/data';
+import { updateProjectInAppwrite, createNotification } from '@/lib/data'; // Added createNotification
+import { notifyAdmin, AdminNotificationInput } from "@/ai/flows/notify-admin-flow"; // Added notifyAdmin and AdminNotificationInput
 import { cn } from '@/lib/utils';
 import { projectDocumentStatuses } from '@/types'; // Import available statuses
 import { Loader2 } from 'lucide-react';
@@ -18,6 +19,8 @@ import { Loader2 } from 'lucide-react';
 interface ProjectViewClientProps {
   project: Project;
 }
+
+const ADMIN_USER_ID = "admin_user"; // Placeholder
 
 export function ProjectViewClient({ project: initialProject }: ProjectViewClientProps) {
   const [project, setProject] = useState<Project>(initialProject);
@@ -43,9 +46,32 @@ export function ProjectViewClient({ project: initialProject }: ProjectViewClient
     }
   }, [initialProject]);
 
+  const triggerAdminNotificationForProject = async (projectId: string, projectTitle: string, eventType: AdminNotificationInput['eventType'], eventDetails: string) => {
+    try {
+      const notificationInput: AdminNotificationInput = {
+        ticketId: projectId, // Using ticketId field for project ID as flow expects it
+        eventType,
+        details: eventDetails,
+        ticketTitle: projectTitle, // Using ticketTitle for project title
+      };
+      const notificationResult = await notifyAdmin(notificationInput);
+      if (notificationResult.sent && notificationResult.notificationMessage) {
+        await createNotification({
+          userId: ADMIN_USER_ID,
+          message: notificationResult.notificationMessage,
+          href: `/projects/view/${projectId}`,
+        });
+        console.log(`Admin notification created for ${eventType} on project:`, projectId);
+      }
+    } catch (error) {
+      console.error("Failed to send/store admin notification for project event:", error);
+    }
+  };
+
   const handleStatusChange = async (newStatus: ProjectDocumentStatus) => {
     if (newStatus === project.status) return;
     setIsUpdatingStatus(true);
+    const oldStatus = project.status;
     try {
       const updatedProject = await updateProjectInAppwrite(project.$id, { status: newStatus });
       if (updatedProject) {
@@ -53,7 +79,16 @@ export function ProjectViewClient({ project: initialProject }: ProjectViewClient
         if (updatedProject.$updatedAt) {
           setFormattedUpdatedAt(new Date(updatedProject.$updatedAt).toLocaleString());
         }
-        toast({ title: "Project Status Updated", description: `Project status changed to "${newStatus}".` });
+        toast({ title: "Project Status Updated", description: `Project status changed from "${oldStatus}" to "${newStatus}".` });
+        
+        // Trigger admin notification for status change
+        triggerAdminNotificationForProject(
+          updatedProject.$id,
+          updatedProject.name,
+          'status_change', // Re-using 'status_change' event type from tickets
+          `Project "${updatedProject.name}" status changed from ${oldStatus} to ${newStatus}.`
+        );
+
         router.refresh(); // Refresh server components if needed
       } else {
         toast({ variant: "destructive", title: "Update Failed", description: "Could not update project status." });
