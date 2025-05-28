@@ -30,7 +30,9 @@ function ProjectCard({ project }: { project: Project }) {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
-          <CardTitle>{project.name}</CardTitle>
+          <CardTitle className="hover:underline">
+            <Link href={`/projects/view/${project.$id}`}>{project.name}</Link>
+          </CardTitle>
           <Badge variant={project.status === 'completed' ? 'outline' : 'default'}
             className={cn(
                 project.status === 'new' && 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30',
@@ -50,8 +52,7 @@ function ProjectCard({ project }: { project: Project }) {
       </CardContent>
       <CardFooter>
         <Button variant="outline" size="sm" className="ml-auto" asChild>
-          {/* Placeholder link, a real app would have a /projects/view/[id] page */}
-          <Link href="#">View Project <ArrowUpRight className="ml-1 h-4 w-4" /></Link>
+          <Link href={`/projects/view/${project.$id}`}>View Project <ArrowUpRight className="ml-1 h-4 w-4" /></Link>
         </Button>
       </CardFooter>
     </Card>
