@@ -143,7 +143,7 @@ export const createProjectInAppwrite = async (projectData: Omit<Project, '$id' |
     return undefined;
   }
   try {
-    // Ensure deadline is either an ISO string or null for Appwrite
+    // Ensure deadline is an ISO string (expected by Appwrite's Datetime attribute) or null
     const dataToSave = {
       ...projectData,
       deadline: projectData.deadline ? formatISO(new Date(projectData.deadline)) : null,
@@ -229,3 +229,4 @@ export const updateProjectInAppwrite = async (projectId: string, updatedFields: 
     return undefined;
   }
 };
+
