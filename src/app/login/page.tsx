@@ -41,7 +41,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-2xl">
+      <Card className="w-full max-w-lg shadow-2xl"> {/* Changed from max-w-md to max-w-lg */}
         <CardHeader className="text-center">
           <Image 
             src="https://placehold.co/150x50.png?text=ExperTed" 
