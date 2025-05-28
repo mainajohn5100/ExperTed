@@ -28,13 +28,15 @@ const ProjectSummarySchema = z.object({
   deadline: z.string().datetime().nullable().optional(),
 });
 
-export const SummarizeAllReportsInputSchema = z.object({
+// Removed export from the schema definition
+const SummarizeAllReportsInputSchema = z.object({
   tickets: z.array(TicketSummarySchema).describe('An array of ticket objects to summarize.'),
   projects: z.array(ProjectSummarySchema).describe('An array of project objects to summarize.'),
 });
 export type SummarizeAllReportsInput = z.infer<typeof SummarizeAllReportsInputSchema>;
 
-export const SummarizeAllReportsOutputSchema = z.object({
+// Removed export from the schema definition
+const SummarizeAllReportsOutputSchema = z.object({
   summary: z.string().describe('A comprehensive summary of the provided tickets and projects, highlighting key statistics, trends, and overall status.'),
 });
 export type SummarizeAllReportsOutput = z.infer<typeof SummarizeAllReportsOutputSchema>;
@@ -94,3 +96,4 @@ const summarizeAllReportsFlow = ai.defineFlow(
     return output;
   }
 );
+
