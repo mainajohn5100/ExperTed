@@ -14,19 +14,27 @@ import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { ImageDropzone } from '@/components/settings/image-dropzone'; // New import
-import { storage, avatarsBucketId, ID } from '@/lib/appwrite'; // New import
+import { ImageDropzone } from '@/components/settings/image-dropzone';
+import { storage, avatarsBucketId, ID } from '@/lib/appwrite';
+import type { Models } from '@/types';
 
 export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
-  const { user, updateUserName, updateUserAvatarUrl, isLoading: authIsLoading, refreshUser } = useAuth();
+  const { user, updateUserName, updateUserAvatarUrl, updateUserNotificationSetting, isLoading: authIsLoading, refreshUser } = useAuth();
   const { toast } = useToast();
 
+  // Profile States
   const [nameInput, setNameInput] = useState('');
   const [avatarUrlInput, setAvatarUrlInput] = useState('');
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Notification States
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
+  const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true); // Default for demo
+  const [isSavingNotificationPrefs, setIsSavingNotificationPrefs] = useState(false);
+
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -36,9 +44,16 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
+      // Profile
       setNameInput(user.name || '');
       setAvatarUrlInput(user.prefs?.avatarUrl || '');
-      setSelectedAvatarFile(null); // Reset selected file when user data changes
+      setSelectedAvatarFile(null);
+
+      // Notifications - ensure prefs is treated as Models.Preferences
+      const userPrefs = user.prefs as Models.Preferences & { emailNotificationsEnabled?: boolean, inAppNotificationsEnabled?: boolean };
+      setEmailNotificationsEnabled(userPrefs?.emailNotificationsEnabled || false);
+      // For in-app, if we decide to save it, retrieve it similarly:
+      // setInAppNotificationsEnabled(userPrefs?.inAppNotificationsEnabled === undefined ? true : userPrefs.inAppNotificationsEnabled);
     }
   }, [user]);
 
@@ -56,7 +71,6 @@ export default function SettingsPage() {
   const handleAvatarFileSelected = (file: File | null) => {
     setSelectedAvatarFile(file);
     if (!file) {
-      // If file is removed, reset avatarUrlInput to current user's avatar or empty
       setAvatarUrlInput(user?.prefs?.avatarUrl || '');
     }
   };
@@ -92,7 +106,6 @@ export default function SettingsPage() {
         if (uploadedUrl) {
           finalAvatarUrl = uploadedUrl;
         } else {
-          // Upload failed, don't proceed with saving this avatar change
           setIsSavingProfile(false);
           return;
         }
@@ -106,28 +119,50 @@ export default function SettingsPage() {
         nameChanged = true;
         updatePromises.push(updateUserName(nameInput));
       }
-      if (finalAvatarUrl !== (user.prefs?.avatarUrl || '')) {
+      // Explicitly check against current prefs, handling undefined
+      const currentAvatarUrl = (user.prefs as Models.Preferences & { avatarUrl?: string })?.avatarUrl || '';
+      if (finalAvatarUrl !== currentAvatarUrl) {
         avatarChanged = true;
         updatePromises.push(updateUserAvatarUrl(finalAvatarUrl));
       }
 
+
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises);
-        await refreshUser(); // Refresh user data from context to get latest prefs
+        await refreshUser(); 
         let successMessage = "Profile updated successfully!";
         if (nameChanged && avatarChanged) successMessage = "Name and avatar updated!";
         else if (nameChanged) successMessage = "Name updated successfully!";
         else if (avatarChanged) successMessage = "Avatar updated successfully!";
         toast({ title: "Success", description: successMessage });
-        setSelectedAvatarFile(null); // Clear selected file after successful save
+        setSelectedAvatarFile(null); 
       } else {
-        toast({ title: "No Changes", description: "No information was changed." });
+        toast({ title: "No Changes", description: "No profile information was changed." });
       }
     } catch (error) {
       console.error("Failed to update profile:", error);
       toast({ variant: "destructive", title: "Update Failed", description: (error as Error).message || "Could not update profile." });
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleNotificationPreferencesSave = async () => {
+    if (!user) return;
+    setIsSavingNotificationPrefs(true);
+    try {
+      const newPrefs: Partial<Models.Preferences & { emailNotificationsEnabled: boolean }> = {
+        emailNotificationsEnabled: emailNotificationsEnabled,
+        // inAppNotificationsEnabled: inAppNotificationsEnabled, // if we save this one too
+      };
+      await updateUserNotificationSetting(newPrefs);
+      await refreshUser(); // Refresh user to ensure UI reflects saved prefs
+      toast({ title: "Success", description: "Notification preferences saved." });
+    } catch (error) {
+      console.error("Failed to save notification preferences:", error);
+      toast({ variant: "destructive", title: "Save Failed", description: (error as Error).message || "Could not save notification preferences." });
+    } finally {
+      setIsSavingNotificationPrefs(false);
     }
   };
 
@@ -176,7 +211,7 @@ export default function SettingsPage() {
                       value={avatarUrlInput}
                       onChange={(e) => {
                         setAvatarUrlInput(e.target.value);
-                        setSelectedAvatarFile(null); // Clear file if URL is manually changed
+                        setSelectedAvatarFile(null); 
                       }}
                       placeholder="https://example.com/avatar.png" 
                       disabled={isSavingProfile || authIsLoading || isUploadingAvatar || !!selectedAvatarFile}
@@ -200,7 +235,7 @@ export default function SettingsPage() {
               </div>
               
               <Button onClick={handleProfileSaveChanges} disabled={isSavingProfile || authIsLoading || isUploadingAvatar || (!user)}>
-                {(isSavingProfile) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {(isSavingProfile || isUploadingAvatar) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Changes
               </Button>
             </CardContent>
@@ -215,24 +250,37 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
-                <Label htmlFor="email-notifications" className="flex flex-col space-y-1">
+                <Label htmlFor="email-notifications" className="flex flex-col space-y-1 cursor-pointer">
                   <span>Email Notifications</span>
                   <span className="font-normal leading-snug text-muted-foreground">
-                    Receive notifications about new tickets and updates via email. (Coming Soon)
+                    Receive notifications about new tickets and updates via email.
                   </span>
                 </Label>
-                <Switch id="email-notifications" defaultChecked disabled />
+                <Switch 
+                  id="email-notifications" 
+                  checked={emailNotificationsEnabled}
+                  onCheckedChange={setEmailNotificationsEnabled}
+                  disabled={isSavingNotificationPrefs || authIsLoading}
+                />
               </div>
               <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
                 <Label htmlFor="app-notifications" className="flex flex-col space-y-1">
                   <span>In-App Notifications</span>
                   <span className="font-normal leading-snug text-muted-foreground">
-                    Show notifications directly within the ExperTed application.
+                    Show notifications directly within the ExperTed application. (Always enabled)
                   </span>
                 </Label>
-                <Switch id="app-notifications" defaultChecked />
+                <Switch 
+                  id="app-notifications" 
+                  checked={inAppNotificationsEnabled} 
+                  onCheckedChange={setInAppNotificationsEnabled} 
+                  disabled 
+                />
               </div>
-               <Button disabled>Save Preferences (Coming Soon)</Button>
+               <Button onClick={handleNotificationPreferencesSave} disabled={isSavingNotificationPrefs || authIsLoading || !user}>
+                {isSavingNotificationPrefs ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Preferences
+               </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -245,7 +293,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
                <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
-                <Label htmlFor="dark-mode" className="flex flex-col space-y-1">
+                <Label htmlFor="dark-mode" className="flex flex-col space-y-1 cursor-pointer">
                   <span>Dark Mode</span>
                   <span className="font-normal leading-snug text-muted-foreground">
                     Enable dark theme for the application.

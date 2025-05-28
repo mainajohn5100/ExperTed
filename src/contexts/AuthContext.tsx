@@ -1,9 +1,9 @@
 
 'use client';
 
-import type { AppwriteUser, Models } from '@/types'; // Added Models
+import type { AppwriteUser, Models } from '@/types';
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { account, ID, updateUserNameInAppwrite, updateUserPrefsInAppwrite } from '@/lib/appwrite'; // Added update functions
+import { account, ID, updateUserNameInAppwrite, updateUserPrefsInAppwrite } from '@/lib/appwrite';
 import { AppwriteException } from 'appwrite';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -15,6 +15,7 @@ interface AuthContextType {
   signup: (email_param: string, password_param: string, name_param: string) => Promise<AppwriteUser | null>;
   updateUserName: (newName: string) => Promise<void>;
   updateUserAvatarUrl: (newAvatarUrl: string) => Promise<void>;
+  updateUserNotificationSetting: (notificationSettings: Partial<Models.Preferences>) => Promise<void>; // New method
   refreshUser: () => Promise<void>;
 }
 
@@ -98,13 +99,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const updateUserName = async (newName: string): Promise<void> => {
     if (!user) throw new Error("User not authenticated");
     const updatedUser = await updateUserNameInAppwrite(newName);
-    setUser(updatedUser); // Update context with the new user object
+    setUser(updatedUser);
   };
 
   const updateUserAvatarUrl = async (newAvatarUrl: string): Promise<void> => {
     if (!user) throw new Error("User not authenticated");
     const currentPrefs = user.prefs || {};
     const updatedUser = await updateUserPrefsInAppwrite({ ...currentPrefs, avatarUrl: newAvatarUrl });
+    setUser(updatedUser);
+  };
+
+  const updateUserNotificationSetting = async (notificationSettings: Partial<Models.Preferences>): Promise<void> => {
+    if (!user) throw new Error("User not authenticated");
+    const currentPrefs = user.prefs || {};
+    const updatedUser = await updateUserPrefsInAppwrite({ ...currentPrefs, ...notificationSettings });
     setUser(updatedUser); // Update context with the new user object
   };
   
@@ -114,7 +122,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(currentUser);
     } catch (error) {
       console.error("Failed to refresh user", error);
-      // Potentially handle logout if user session is invalid
       if ((error as AppwriteException).code === 401) {
         setUser(null);
          if (pathname !== '/login' && pathname !== '/signup') {
@@ -126,9 +133,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, signup, updateUserName, updateUserAvatarUrl, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, signup, updateUserName, updateUserAvatarUrl, updateUserNotificationSetting, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
