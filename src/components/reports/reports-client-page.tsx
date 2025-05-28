@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Brain, Download as DownloadIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { summarizeAllReports, SummarizeAllReportsInput } from '@/ai/flows/summarize-all-reports-flow';
+import { summarizeAllReports, SummarizeAllReportsInput } from '@/ai/flows/summarize-all-reports-flow.ts';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MonthlyTicketVolumeReportChart } from '@/components/charts/monthly-ticket-volume-report-chart';
 import { ProjectStatusReportChart } from '@/components/charts/project-status-report-chart';
@@ -96,18 +96,13 @@ export function ReportsClientPage({ allTickets, allProjects }: ReportsClientPage
         <MonthlyTicketVolumeReportChart tickets={allTickets} />
         <ProjectStatusReportChart projects={allProjects} />
         <div className="lg:col-span-2">
-          <CsatReportChart /> {/* Mock data for now */}
+          <CsatReportChart />
         </div>
         <div className="lg:col-span-2">
           <MonthlyStatusBreakdownChart tickets={allTickets} />
         </div>
       </div>
       
-      {/* Placeholder for Custom Report Generator */}
-      {/* <Card>
-        <CardHeader><CardTitle>Custom Report Generator</CardTitle></CardHeader>
-        <CardContent><p className="text-muted-foreground">Functionality to be implemented.</p></CardContent>
-      </Card> */}
     </div>
   );
 }
