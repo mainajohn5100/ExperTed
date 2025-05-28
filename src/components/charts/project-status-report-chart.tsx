@@ -8,7 +8,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 import type { Project, ProjectDocumentStatus } from '@/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Printer, Download, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIconCSS, Loader2 } from 'lucide-react'; // Renamed LineChartIcon
+import { MoreVertical, Printer, Download, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIconCSS, Loader2 } from 'lucide-react';
 
 const projectStatusColors: Record<ProjectDocumentStatus, string> = {
   new: 'hsl(var(--chart-1))',
@@ -18,7 +18,7 @@ const projectStatusColors: Record<ProjectDocumentStatus, string> = {
 };
 
 const chartConfigBase = {
-  value: { label: 'Projects' }, // dataKey for Bar/Line
+  value: { label: 'Projects' }, 
   new: { label: 'New', color: projectStatusColors.new },
   active: { label: 'Active', color: projectStatusColors.active },
   'on-hold': { label: 'On Hold', color: projectStatusColors['on-hold'] },
@@ -28,7 +28,7 @@ const chartConfigBase = {
 
 interface StatusData {
   name: string;
-  value: number; // Changed from 'count' to 'value' to match dataKey
+  value: number; 
   status: ProjectDocumentStatus;
   fill: string;
 }
@@ -55,7 +55,7 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
       const dataForChart = (Object.keys(projectStatusColors) as ProjectDocumentStatus[])
         .map((status) => ({
           name: status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' '),
-          value: statusCounts[status] || 0, // ensure dataKey is 'value'
+          value: statusCounts[status] || 0, 
           status: status,
           fill: projectStatusColors[status] || 'hsl(var(--muted))',
         }));
@@ -72,7 +72,7 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
       setChartConfig(dynamicConfig);
       console.log('[ProjectStatusReportChart] Processed project data:', dataForChart);
 
-    } catch (error) {
+    } catch (error) => {
       console.error("[ProjectStatusReportChart] Failed to process project data:", error);
     }
     setIsLoading(false);
@@ -126,17 +126,19 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           {chartType === 'bar' ? (
-            <BarChart data={processedData} layout="vertical" margin={{ right: 20, left: 20 }}>
-              <CartesianGrid horizontal={false} />
-              <XAxis type="number" dataKey="value" allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={80} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="value" radius={4}>
-                {processedData.map((entry) => (
-                  <Cell key={`cell-${entry.status}`} fill={`var(--color-${entry.status})`} />
-                ))}
-              </Bar>
-            </BarChart>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={processedData} layout="vertical" margin={{ right: 20, left: 20 }}>
+                <CartesianGrid horizontal={false} />
+                <XAxis type="number" dataKey="value" allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={80} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="value" radius={4}>
+                  {processedData.map((entry) => (
+                    <Cell key={`cell-${entry.status}`} fill={`var(--color-${entry.status})`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           ) : chartType === 'pie' ? (
             <RechartsPieChart>
               <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
@@ -148,6 +150,7 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
               <ChartLegend content={<ChartLegendContent nameKey="name" />} />
             </RechartsPieChart>
           ) : ( 
+            <ResponsiveContainer width="100%" height="100%">
               <RechartsLineChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false}/>
                   <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
@@ -155,6 +158,7 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
                   <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
                   <Line type="monotone" dataKey="value" stroke="var(--color-line)" strokeWidth={2} dot={{ r: 4 }} />
               </RechartsLineChart>
+            </ResponsiveContainer>
           )}
         </ChartContainer>
       </CardContent>

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BarChart3, PieChart as PieChartIcon, LineChart as LineChartIconCSS, MoreVertical, Printer, Download, Loader2 } from 'lucide-react'; // Renamed LineChartIcon
+import { BarChart3, PieChart as PieChartIcon, LineChart as LineChartIconCSS, MoreVertical, Printer, Download, Loader2 } from 'lucide-react';
 import type { Ticket, TicketDocumentStatus } from '@/types';
 
 const ticketStatusColors: Record<TicketDocumentStatus, string> = {
@@ -119,18 +119,20 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           {chartType === 'bar' ? (
-            <BarChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-              <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Bar dataKey="count" radius={4}>
-                 {processedData.map((entry) => (
-                    <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
-                  ))}
-              </Bar>
-            </BarChart>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar dataKey="count" radius={4}>
+                   {processedData.map((entry) => (
+                      <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
+                    ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           ) : chartType === 'pie' ? (
             <RechartsPieChart>
               <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
@@ -142,13 +144,15 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
               <ChartLegend content={<ChartLegendContent nameKey="name" />} />
             </RechartsPieChart>
           ) : ( 
+            <ResponsiveContainer width="100%" height="100%">
               <RechartsLineChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false}/>
                   <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                  <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false}/>
+                  <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} dataKey="count"/>
                   <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
                   <Line type="monotone" dataKey="count" stroke="var(--color-line)" strokeWidth={2} dot={{ r: 4 }} />
               </RechartsLineChart>
+            </ResponsiveContainer>
           )}
         </ChartContainer>
       </CardContent>

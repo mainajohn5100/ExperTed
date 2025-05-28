@@ -23,14 +23,16 @@ const ticketResolutionTimeData = [
 const chartConfig = {
   avgTime: {
     label: 'Avg. Resolution Time (Hours)',
-    color: 'hsl(var(--chart-1))', // Using chart-1 for reports, was --primary on dashboard
+    color: 'hsl(var(--chart-1))', 
   },
 } satisfies ChartConfig;
 
 export function AverageTicketResolutionTimeReportChart() {
   console.log('[AverageTicketResolutionTimeReportChart] Rendering...');
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') window.print();
+  };
   const handleDownload = () => alert('Download functionality to be implemented.');
 
   return (
@@ -51,7 +53,7 @@ export function AverageTicketResolutionTimeReportChart() {
       </CardHeader>
       <CardContent>
         <p className="text-xs text-muted-foreground mb-2">Note: This chart currently uses mock data.</p>
-        <ChartContainer config={chartConfig} className="h-[276px] w-full"> {/* Adjusted height for note */}
+        <ChartContainer config={chartConfig} className="h-[276px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={ticketResolutionTimeData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />

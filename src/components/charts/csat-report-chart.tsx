@@ -29,7 +29,9 @@ export function CsatReportChart() {
   console.log('[CsatReportChart] Rendering...');
   const [csatData] = React.useState(mockCsatData); // Still using mock data
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') window.print();
+  };
   const handleDownload = () => alert('Download functionality to be implemented.');
 
   return (
