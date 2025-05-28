@@ -2,13 +2,12 @@
 'use client';
 
 import * as React from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Line, LineChart as RechartsLineChart, Pie, PieChart as RechartsPie, Cell, Legend as RechartsLegend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell, Line, LineChart as RechartsLineChart, Legend as RechartsLegend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, MoreVertical, Printer, Download, Loader2 } from 'lucide-react';
+import { BarChart3, PieChart as PieChartIcon, LineChart as LineChartIconCSS, MoreVertical, Printer, Download, Loader2 } from 'lucide-react'; // Renamed LineChartIcon to avoid conflict
 import { getTicketsByStatus } from '@/lib/data';
 import type { Ticket, TicketDocumentStatus } from '@/types';
 
@@ -29,7 +28,7 @@ const initialTicketsByStatusConfig: ChartConfig = {
   active: { label: 'Active', color: ticketStatusColors.active },
   closed: { label: 'Closed', color: ticketStatusColors.closed },
   terminated: { label: 'Terminated', color: ticketStatusColors.terminated },
-  line: { label: 'Tickets', color: "hsl(var(--primary))" }, // For single line chart
+  line: { label: 'Tickets', color: "hsl(var(--primary))" },
 };
 
 const ticketResolutionTimeData = [
@@ -83,7 +82,7 @@ export function DashboardCharts() {
         setTicketsByStatusData(dataForChart);
 
         const dynamicConfig: ChartConfig = { 
-          count: { label: "Tickets"},
+          count: { label: "Tickets"}, // For Bar/Line dataKey
           line: { label: 'Tickets', color: "hsl(var(--primary))" }, 
         };
         dataForChart.forEach(item => {
@@ -127,7 +126,7 @@ export function DashboardCharts() {
                 <PieChartIcon className="mr-2 h-4 w-4" /> Pie Chart
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setTicketStatusChartType('line')}>
-                <LineChartIcon className="mr-2 h-4 w-4" /> Line Chart
+                <LineChartIconCSS className="mr-2 h-4 w-4" /> Line Chart
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={handlePrint}>
@@ -150,40 +149,38 @@ export function DashboardCharts() {
             </div>
           ) : (
             <ChartContainer config={ticketsByStatusConfig} className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                {ticketStatusChartType === 'bar' ? (
-                  <BarChart data={ticketsByStatusData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} />
-                    <Bar dataKey="count" radius={4}>
-                       {ticketsByStatusData.map((entry) => (
-                          <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
-                        ))}
-                    </Bar>
-                  </BarChart>
-                ) : ticketStatusChartType === 'pie' ? (
-                  <RechartsPie>
-                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                    <RechartsPie data={ticketsByStatusData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                      {ticketsByStatusData.map((entry) => (
+              {ticketStatusChartType === 'bar' ? (
+                <BarChart data={ticketsByStatusData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="count" radius={4}>
+                     {ticketsByStatusData.map((entry) => (
                         <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
                       ))}
-                    </RechartsPie>
-                    <RechartsLegend content={<ChartLegendContent nameKey="name" />} />
-                  </RechartsPie>
-                ) : ( // Line Chart
-                  <RechartsLineChart data={ticketsByStatusData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
-                    <Line type="monotone" dataKey="count" stroke="var(--color-line)" strokeWidth={2} dot={{r: 4}} />
-                  </RechartsLineChart>
-                )}
-              </ResponsiveContainer>
+                  </Bar>
+                </BarChart>
+              ) : ticketStatusChartType === 'pie' ? (
+                <RechartsPieChart>
+                  <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                  <Pie data={ticketsByStatusData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                    {ticketsByStatusData.map((entry) => (
+                      <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
+                    ))}
+                  </Pie>
+                  <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                </RechartsPieChart>
+              ) : ( 
+                <RechartsLineChart data={ticketsByStatusData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                  <Line type="monotone" dataKey="count" stroke="var(--color-line)" strokeWidth={2} dot={{r: 4}} />
+                </RechartsLineChart>
+              )}
             </ChartContainer>
           )}
         </CardContent>
@@ -212,7 +209,6 @@ export function DashboardCharts() {
         <CardContent>
           <p className="text-xs text-muted-foreground mb-2">Note: This chart currently uses mock data.</p>
            <ChartContainer config={ticketResolutionTimeConfig} className="h-[276px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
               <RechartsLineChart data={ticketResolutionTimeData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
@@ -220,7 +216,6 @@ export function DashboardCharts() {
                 <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
                 <Line type="monotone" dataKey="avgTime" stroke="var(--color-avgTime)" strokeWidth={2} dot={{r: 4}} />
               </RechartsLineChart>
-            </ResponsiveContainer>
           </ChartContainer>
         </CardContent>
       </Card>

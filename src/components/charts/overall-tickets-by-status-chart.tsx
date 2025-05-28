@@ -2,12 +2,12 @@
 'use client';
 
 import * as React from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Pie, PieChart as RechartsPie, Line, LineChart as RechartsLineChart, Cell, Legend as RechartsLegend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell, Line, LineChart as RechartsLineChart, Legend as RechartsLegend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, MoreVertical, Printer, Download, Loader2 } from 'lucide-react';
+import { BarChart3, PieChart as PieChartIcon, LineChart as LineChartIconCSS, MoreVertical, Printer, Download, Loader2 } from 'lucide-react'; // Renamed LineChartIcon
 import type { Ticket, TicketDocumentStatus } from '@/types';
 
 const ticketStatusColors: Record<TicketDocumentStatus, string> = {
@@ -57,7 +57,7 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
 
       const dynamicConfig: ChartConfig = { 
         count: { label: "Tickets"},
-        line: { label: 'Tickets', color: "hsl(var(--primary))" }, // For single line chart
+        line: { label: 'Tickets', color: "hsl(var(--primary))" }, 
       };
       dataForChart.forEach(item => {
           dynamicConfig[item.statusKey] = { label: item.name, color: item.fill };
@@ -109,7 +109,7 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => setChartType('bar')}><BarChart3 className="mr-2 h-4 w-4" />Bar Chart</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setChartType('pie')}><PieChartIcon className="mr-2 h-4 w-4" />Pie Chart</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setChartType('line')}><LineChartIcon className="mr-2 h-4 w-4" />Line Chart</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setChartType('line')}><LineChartIconCSS className="mr-2 h-4 w-4" />Line Chart</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handlePrint}><Printer className="mr-2 h-4 w-4" />Print</DropdownMenuItem>
             <DropdownMenuItem onSelect={handleDownload}><Download className="mr-2 h-4 w-4" />Download</DropdownMenuItem>
@@ -118,40 +118,38 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            {chartType === 'bar' ? (
-              <BarChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Bar dataKey="count" radius={4}>
-                   {processedData.map((entry) => (
-                      <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
-                    ))}
-                </Bar>
-              </BarChart>
-            ) : chartType === 'pie' ? (
-              <RechartsPie>
-                <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                <RechartsPie data={processedData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                  {processedData.map((entry) => (
+          {chartType === 'bar' ? (
+            <BarChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar dataKey="count" radius={4}>
+                 {processedData.map((entry) => (
                     <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
                   ))}
-                </RechartsPie>
-                <RechartsLegend content={<ChartLegendContent nameKey="name" />} />
-              </RechartsPie>
-            ) : ( // Line Chart
-                <RechartsLineChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false}/>
-                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
-                    <Line type="monotone" dataKey="count" stroke="var(--color-line)" strokeWidth={2} dot={{ r: 4 }} />
-                </RechartsLineChart>
-            )}
-          </ResponsiveContainer>
+              </Bar>
+            </BarChart>
+          ) : chartType === 'pie' ? (
+            <RechartsPieChart>
+              <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+              <Pie data={processedData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                {processedData.map((entry) => (
+                  <Cell key={`cell-${entry.statusKey}`} fill={`var(--color-${entry.statusKey})`} />
+                ))}
+              </Pie>
+              <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+            </RechartsPieChart>
+          ) : ( 
+              <RechartsLineChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false}/>
+                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                  <Line type="monotone" dataKey="count" stroke="var(--color-line)" strokeWidth={2} dot={{ r: 4 }} />
+              </RechartsLineChart>
+          )}
         </ChartContainer>
       </CardContent>
     </Card>
