@@ -2,13 +2,13 @@
 'use client';
 
 import * as React from 'react';
-import { Bar, BarChart, CartesianGrid, Pie, PieChart as RechartsPie, ResponsiveContainer, XAxis, YAxis, Cell, Legend as RechartsLegend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Pie, PieChart as RechartsPie, Line, LineChart as RechartsLineChart, ResponsiveContainer, XAxis, YAxis, Cell, Legend as RechartsLegend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import type { Project, ProjectDocumentStatus } from '@/types';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Printer, Download, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { MoreVertical, Printer, Download, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, Loader2 } from 'lucide-react';
 
 const projectStatusColors: Record<ProjectDocumentStatus, string> = {
   new: 'hsl(var(--chart-1))',
@@ -23,7 +23,15 @@ const chartConfigBase = {
   active: { label: 'Active', color: projectStatusColors.active },
   'on-hold': { label: 'On Hold', color: projectStatusColors['on-hold'] },
   completed: { label: 'Completed', color: projectStatusColors.completed },
+  line: { label: 'Projects', color: "hsl(var(--primary))" }, // For single line chart
 } satisfies ChartConfig;
+
+interface StatusData {
+  name: string;
+  value: number;
+  status: ProjectDocumentStatus;
+  fill: string;
+}
 
 interface ProjectStatusReportChartProps {
   projects: Project[];
@@ -31,9 +39,9 @@ interface ProjectStatusReportChartProps {
 
 export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartProps) {
   console.log('[ProjectStatusReportChart] Received projects:', projects.length);
-  const [chartType, setChartType] = React.useState<'bar' | 'pie'>('bar');
+  const [chartType, setChartType] = React.useState<'bar' | 'pie' | 'line'>('bar');
   const [isLoading, setIsLoading] = React.useState(true);
-  const [processedData, setProcessedData] = React.useState<any[]>([]);
+  const [processedData, setProcessedData] = React.useState<StatusData[]>([]);
   const [chartConfig, setChartConfig] = React.useState<ChartConfig>(chartConfigBase);
 
   React.useEffect(() => {
@@ -54,7 +62,10 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
 
       setProcessedData(dataForChart);
       
-      const dynamicConfig: ChartConfig = { count: { label: "Projects"} };
+      const dynamicConfig: ChartConfig = { 
+        value: { label: "Projects" }, // 'value' is the dataKey for Bar/Line
+        line: { label: 'Projects', color: "hsl(var(--primary))" },
+      };
       dataForChart.forEach(item => {
           dynamicConfig[item.status] = { label: item.name, color: item.fill };
       });
@@ -67,14 +78,18 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
     setIsLoading(false);
   }, [projects]);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') window.print();
+  };
   const handleDownload = () => alert('Download functionality to be implemented.');
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader><CardTitle>Projects by Status</CardTitle></CardHeader>
-        <CardContent className="h-[350px] flex items-center justify-center"><p>Loading chart data...</p></CardContent>
+        <CardContent className="h-[350px] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
       </Card>
     );
   }
@@ -101,6 +116,8 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => setChartType('bar')}><BarChart3 className="mr-2 h-4 w-4" />Bar Chart</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setChartType('pie')}><PieChartIcon className="mr-2 h-4 w-4" />Pie Chart</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setChartType('line')}><LineChartIcon className="mr-2 h-4 w-4" />Line Chart</DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handlePrint}><Printer className="mr-2 h-4 w-4" />Print</DropdownMenuItem>
             <DropdownMenuItem onSelect={handleDownload}><Download className="mr-2 h-4 w-4" />Download</DropdownMenuItem>
           </DropdownMenuContent>
@@ -117,17 +134,28 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="value" radius={4}>
                   {processedData.map((entry) => (
-                    <Cell key={`cell-${entry.status}`} fill={entry.fill} />
+                    <Cell key={`cell-${entry.status}`} fill={`var(--color-${entry.status})`} />
                   ))}
                 </Bar>
               </BarChart>
-            ) : (
-              <RechartsPie data={processedData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+            ) : chartType === 'pie' ? (
+              <RechartsPie>
                 <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-                {processedData.map((entry) => (
-                  <Cell key={`cell-${entry.status}`} fill={entry.fill} />
-                ))}
+                <RechartsPie data={processedData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                  {processedData.map((entry) => (
+                    <Cell key={`cell-${entry.status}`} fill={`var(--color-${entry.status})`} />
+                  ))}
+                </RechartsPie>
+                <RechartsLegend content={<ChartLegendContent nameKey="name" />} />
               </RechartsPie>
+            ) : ( // Line Chart
+                <RechartsLineChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false}/>
+                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <Line type="monotone" dataKey="value" stroke="var(--color-line)" strokeWidth={2} dot={{ r: 4 }} />
+                </RechartsLineChart>
             )}
           </ResponsiveContainer>
         </ChartContainer>

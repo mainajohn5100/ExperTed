@@ -2,12 +2,12 @@
 'use client';
 
 import * as React from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Pie, PieChart as RechartsPie, Cell, Legend as RechartsLegend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Pie, PieChart as RechartsPie, Line, LineChart as RechartsLineChart, Cell, Legend as RechartsLegend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BarChart3, PieChart as PieChartIcon, MoreVertical, Printer, Download, Loader2 } from 'lucide-react';
+import { BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, MoreVertical, Printer, Download, Loader2 } from 'lucide-react';
 import type { Ticket, TicketDocumentStatus } from '@/types';
 
 const ticketStatusColors: Record<TicketDocumentStatus, string> = {
@@ -32,7 +32,7 @@ interface OverallTicketsByStatusChartProps {
 
 export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusChartProps) {
   console.log('[OverallTicketsByStatusChart] Received tickets:', tickets.length);
-  const [chartType, setChartType] = React.useState<'bar' | 'pie'>('bar');
+  const [chartType, setChartType] = React.useState<'bar' | 'pie' | 'line'>('bar');
   const [isLoading, setIsLoading] = React.useState(true);
   const [processedData, setProcessedData] = React.useState<StatusData[]>([]);
   const [chartConfig, setChartConfig] = React.useState<ChartConfig>({});
@@ -55,7 +55,10 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
       
       setProcessedData(dataForChart);
 
-      const dynamicConfig: ChartConfig = { count: { label: "Tickets"} };
+      const dynamicConfig: ChartConfig = { 
+        count: { label: "Tickets"},
+        line: { label: 'Tickets', color: "hsl(var(--primary))" }, // For single line chart
+      };
       dataForChart.forEach(item => {
           dynamicConfig[item.statusKey] = { label: item.name, color: item.fill };
       });
@@ -68,14 +71,18 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
     setIsLoading(false);
   }, [tickets]);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') window.print();
+  };
   const handleDownload = () => alert('Download functionality to be implemented.');
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader><CardTitle>Overall Tickets by Status</CardTitle></CardHeader>
-        <CardContent className="h-[350px] flex items-center justify-center"><p>Loading chart data...</p></CardContent>
+        <CardContent className="h-[350px] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
       </Card>
     );
   }
@@ -85,7 +92,7 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
       <Card>
         <CardHeader><CardTitle>Overall Tickets by Status</CardTitle></CardHeader>
         <CardContent className="h-[350px] flex items-center justify-center"><p>No ticket data available to display.</p></CardContent>
-      </Card>
+     </Card>
    );
  }
   
@@ -102,6 +109,7 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => setChartType('bar')}><BarChart3 className="mr-2 h-4 w-4" />Bar Chart</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setChartType('pie')}><PieChartIcon className="mr-2 h-4 w-4" />Pie Chart</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setChartType('line')}><LineChartIcon className="mr-2 h-4 w-4" />Line Chart</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handlePrint}><Printer className="mr-2 h-4 w-4" />Print</DropdownMenuItem>
             <DropdownMenuItem onSelect={handleDownload}><Download className="mr-2 h-4 w-4" />Download</DropdownMenuItem>
@@ -124,7 +132,7 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
                     ))}
                 </Bar>
               </BarChart>
-            ) : (
+            ) : chartType === 'pie' ? (
               <RechartsPie>
                 <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
                 <RechartsPie data={processedData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
@@ -134,6 +142,14 @@ export function OverallTicketsByStatusChart({ tickets }: OverallTicketsByStatusC
                 </RechartsPie>
                 <RechartsLegend content={<ChartLegendContent nameKey="name" />} />
               </RechartsPie>
+            ) : ( // Line Chart
+                <RechartsLineChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false}/>
+                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <Line type="monotone" dataKey="count" stroke="var(--color-line)" strokeWidth={2} dot={{ r: 4 }} />
+                </RechartsLineChart>
             )}
           </ResponsiveContainer>
         </ChartContainer>
