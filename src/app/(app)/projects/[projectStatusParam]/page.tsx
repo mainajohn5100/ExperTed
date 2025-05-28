@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Briefcase, ArrowUpRight } from 'lucide-react';
+import { Briefcase, ArrowUpRight, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +49,7 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 interface ProjectsByStatusPageProps {
-  params: { projectStatusParam: string }; // Ensure this matches the directory name [projectStatusParam]
+  params: { projectStatusParam: string };
 }
 
 export default async function ProjectsByStatusPage({ params }: ProjectsByStatusPageProps) {
@@ -57,7 +57,7 @@ export default async function ProjectsByStatusPage({ params }: ProjectsByStatusP
   console.log('[ProjectsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
   
   try {
-    const statusFromParams = params?.projectStatusParam; // Use the correct param name
+    const statusFromParams = params?.projectStatusParam;
     console.log('[ProjectsByStatusPage] Extracted statusFromParams:', statusFromParams);
     
     const validStatuses: ProjectStatusKey[] = ["all", "new", "active", "on-hold", "completed"];
@@ -86,7 +86,9 @@ export default async function ProjectsByStatusPage({ params }: ProjectsByStatusP
     return (
       <>
       <AppHeader title={`${statusTitle} Projects`}>
-          {/* <Button>Create New Project</Button> */}
+          <Button asChild>
+            <Link href="/projects/new-project"><PlusCircle className="mr-2 h-4 w-4" />Create New Project</Link>
+          </Button>
       </AppHeader>
       <div className="flex flex-col gap-6">
         {projects.length === 0 ? (
