@@ -2,7 +2,7 @@
 'use client';
 
 import type { Ticket, TicketDocumentStatus, TicketReply } from '@/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
     setTicket(initialTicket); 
   }, [initialTicket]);
 
-  const parsedReplies = React.useMemo(() => {
+  const parsedReplies = useMemo(() => {
     try {
       return ticket.replies ? JSON.parse(ticket.replies) as TicketReply[] : [];
     } catch (e) {
