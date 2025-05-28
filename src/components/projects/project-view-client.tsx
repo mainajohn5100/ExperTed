@@ -1,12 +1,19 @@
 
 'use client';
 
-import type { Project } from '@/types';
+import type { Project, ProjectDocumentStatus } from '@/types';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { updateProjectInAppwrite } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import { projectDocumentStatuses } from '@/types'; // Import available statuses
+import { Loader2 } from 'lucide-react';
 
 interface ProjectViewClientProps {
   project: Project;
@@ -17,6 +24,9 @@ export function ProjectViewClient({ project: initialProject }: ProjectViewClient
   const [formattedCreatedAt, setFormattedCreatedAt] = useState<string | null>(null);
   const [formattedUpdatedAt, setFormattedUpdatedAt] = useState<string | null>(null);
   const [formattedDeadline, setFormattedDeadline] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     setProject(initialProject);
@@ -32,6 +42,30 @@ export function ProjectViewClient({ project: initialProject }: ProjectViewClient
       setFormattedDeadline('N/A');
     }
   }, [initialProject]);
+
+  const handleStatusChange = async (newStatus: ProjectDocumentStatus) => {
+    if (newStatus === project.status) return;
+    setIsUpdatingStatus(true);
+    try {
+      const updatedProject = await updateProjectInAppwrite(project.$id, { status: newStatus });
+      if (updatedProject) {
+        setProject(updatedProject); // Update local state with the full updated project
+        if (updatedProject.$updatedAt) {
+          setFormattedUpdatedAt(new Date(updatedProject.$updatedAt).toLocaleString());
+        }
+        toast({ title: "Project Status Updated", description: `Project status changed to "${newStatus}".` });
+        router.refresh(); // Refresh server components if needed
+      } else {
+        toast({ variant: "destructive", title: "Update Failed", description: "Could not update project status." });
+      }
+    } catch (error) {
+      console.error("Error updating project status:", error);
+      toast({ variant: "destructive", title: "Update Error", description: (error instanceof Error ? error.message : "An unknown error occurred") });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
 
   if (!project) {
     return <div className="p-6 text-center">Project data is not available.</div>;
@@ -63,19 +97,24 @@ export function ProjectViewClient({ project: initialProject }: ProjectViewClient
             <CardTitle>Project Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span>Status:</span>
-              <Badge
-                variant={project.status === 'completed' ? 'outline' : 'default'}
-                className={cn(
-                  project.status === 'new' && 'bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30',
-                  project.status === 'active' && 'bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30',
-                  project.status === 'on-hold' && 'bg-orange-500/20 text-orange-700 border-orange-500/30 hover:bg-orange-500/30',
-                  project.status === 'completed' && 'bg-gray-500/20 text-gray-700 border-gray-500/30 hover:bg-gray-500/30',
-                )}
-              >
-                {project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('-', ' ')}
-              </Badge>
+              {isUpdatingStatus ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Select value={project.status} onValueChange={(value) => handleStatusChange(value as ProjectDocumentStatus)} disabled={isUpdatingStatus}>
+                  <SelectTrigger className="w-[180px] h-9">
+                    <SelectValue placeholder="Set status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projectDocumentStatuses.map(s => (
+                      <SelectItem key={s} value={s}>
+                        {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <Separator />
             <div className="flex justify-between">

@@ -3,6 +3,7 @@ export type TicketDocumentStatus = "new" | "pending" | "on-hold" | "closed" | "a
 export type TicketStatusFilter = "all" | TicketDocumentStatus;
 
 export type ProjectDocumentStatus = "new" | "active" | "on-hold" | "completed";
+export const projectDocumentStatuses: ProjectDocumentStatus[] = ["new", "active", "on-hold", "completed"];
 export type ProjectStatusKey = "all" | ProjectDocumentStatus;
 
 
