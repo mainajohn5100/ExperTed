@@ -4,8 +4,8 @@ import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { RecentTicketsTable } from '@/components/dashboard/recent-tickets-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getTicketsByStatus, getNewTicketsTodayCount } from '@/lib/data'; 
-import { Ticket, FileText, Users, Activity } from 'lucide-react';
+import { getTicketsByStatus, getNewTicketsTodayCount, getProjectsByStatus } from '@/lib/data';
+import { Ticket, FileText, Users, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/header';
 
@@ -16,6 +16,9 @@ export default async function DashboardPage() {
   const openTickets = allTickets.filter(t => t.status !== 'closed' && t.status !== 'terminated').length;
   
   const newTicketsToday = await getNewTicketsTodayCount();
+
+  const allProjects = await getProjectsByStatus('all');
+  const totalProjects = allProjects.length;
 
   return (
     <>
@@ -58,12 +61,12 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agent Activity</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">N/A</div>
-            <p className="text-xs text-muted-foreground">Live agent status (placeholder)</p>
+            <div className="text-2xl font-bold">{totalProjects}</div>
+            <p className="text-xs text-muted-foreground">All time projects count</p>
           </CardContent>
         </Card>
       </div>
