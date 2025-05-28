@@ -11,7 +11,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const AdminNotificationInputSchema = z.object({
+// Removed export from schema definition
+const AdminNotificationInputSchema = z.object({
   ticketId: z.string().describe('The ID of the ticket related to the event.'),
   eventType: z.enum(['new_ticket', 'status_change', 'new_reply', 'ticket_assigned']).describe('The type of event that occurred.'),
   details: z.string().describe('A summary of the event (e.g., "Ticket created by John Doe", "Status changed to Active by Alice", "User Bob replied", "Ticket assigned to Jane").'),
@@ -19,7 +20,8 @@ export const AdminNotificationInputSchema = z.object({
 });
 export type AdminNotificationInput = z.infer<typeof AdminNotificationInputSchema>;
 
-export const AdminNotificationOutputSchema = z.object({
+// Removed export from schema definition
+const AdminNotificationOutputSchema = z.object({
   notificationMessage: z.string().describe('The formatted notification message for the admin.'),
   sent: z.boolean().describe('Indicates if the notification was (conceptually) sent.'),
 });
