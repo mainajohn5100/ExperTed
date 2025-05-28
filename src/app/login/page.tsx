@@ -40,8 +40,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-lg shadow-2xl mx-auto"> {/* Added mx-auto */}
+    <div className="grid min-h-screen place-items-center bg-background p-4">
+      <Card className="w-full max-w-lg shadow-2xl"> {/* mx-auto is not strictly needed with place-items-center but doesn't hurt */}
         <CardHeader className="text-center">
           <Image 
             src="https://placehold.co/150x50.png?text=ExperTed" 
