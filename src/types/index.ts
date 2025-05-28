@@ -52,8 +52,19 @@ export interface User {
   avatar?: string; // URL to avatar image
 }
 
-// Appwrite specific user model
-export type AppwriteUser = Models.User<Models.Preferences>;
+// Appwrite specific user model with augmented preferences
+export type AppFontSize = 'sm' | 'default' | 'lg';
+export type AppTheme = 'default' | 'ocean' | 'forest' | 'rose';
+
+export interface UserPreferences extends Models.Preferences {
+  avatarUrl?: string;
+  emailNotificationsEnabled?: boolean;
+  // inAppNotificationsEnabled?: boolean; // Example for future
+  fontSize?: AppFontSize;
+  theme?: AppTheme;
+}
+
+export type AppwriteUser = Models.User<UserPreferences>;
 
 
 export type TicketPriority = Ticket['priority'];
@@ -68,3 +79,4 @@ export interface AppNotification {
   $createdAt: string; // ISO date string
   $updatedAt: string; // ISO date string
 }
+

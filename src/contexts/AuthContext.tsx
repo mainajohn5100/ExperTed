@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { AppwriteUser, Models } from '@/types';
+import type { AppwriteUser, Models, UserPreferences } from '@/types'; // Added UserPreferences
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { account, ID, updateUserNameInAppwrite, updateUserPrefsInAppwrite } from '@/lib/appwrite';
 import { AppwriteException } from 'appwrite';
@@ -15,7 +15,7 @@ interface AuthContextType {
   signup: (email_param: string, password_param: string, name_param: string) => Promise<AppwriteUser | null>;
   updateUserName: (newName: string) => Promise<void>;
   updateUserAvatarUrl: (newAvatarUrl: string) => Promise<void>;
-  updateUserNotificationSetting: (notificationSettings: Partial<Models.Preferences>) => Promise<void>; // New method
+  updateUserPreferences: (newPrefs: Partial<UserPreferences>) => Promise<void>; // Updated to UserPreferences
   refreshUser: () => Promise<void>;
 }
 
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     try {
       const currentUser = await account.get();
-      setUser(currentUser);
+      setUser(currentUser as AppwriteUser); // Cast to AppwriteUser
     } catch (error) {
       setUser(null);
     } finally {
@@ -52,9 +52,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await account.createEmailPasswordSession(email_param, password_param);
       const currentUser = await account.get();
-      setUser(currentUser);
+      setUser(currentUser as AppwriteUser);
       setIsLoading(false);
-      return currentUser;
+      return currentUser as AppwriteUser;
     } catch (error) {
       console.error('Failed to login', error);
       setUser(null);
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(null);
     } catch (error) {
       console.error('Failed to logout', error);
-      setUser(null);
+      setUser(null); // Ensure user is cleared on error too
     } finally {
       setIsLoading(false);
       if (pathname !== '/login' && pathname !== '/signup') {
@@ -85,9 +85,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await account.create(ID.unique(), email_param, password_param, name_param);
       await account.createEmailPasswordSession(email_param, password_param);
       const currentUser = await account.get();
-      setUser(currentUser);
+      setUser(currentUser as AppwriteUser);
       setIsLoading(false);
-      return currentUser;
+      return currentUser as AppwriteUser;
     } catch (error) {
       console.error('Failed to signup', error);
       setUser(null);
@@ -99,30 +99,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const updateUserName = async (newName: string): Promise<void> => {
     if (!user) throw new Error("User not authenticated");
     const updatedUser = await updateUserNameInAppwrite(newName);
-    setUser(updatedUser);
+    setUser(updatedUser as AppwriteUser);
   };
 
   const updateUserAvatarUrl = async (newAvatarUrl: string): Promise<void> => {
     if (!user) throw new Error("User not authenticated");
-    const currentPrefs = user.prefs || {};
+    const currentPrefs = (user.prefs as UserPreferences) || {};
     const updatedUser = await updateUserPrefsInAppwrite({ ...currentPrefs, avatarUrl: newAvatarUrl });
-    setUser(updatedUser);
+    setUser(updatedUser as AppwriteUser);
   };
-
-  const updateUserNotificationSetting = async (notificationSettings: Partial<Models.Preferences>): Promise<void> => {
+  
+  const updateUserPreferences = async (newPrefsToUpdate: Partial<UserPreferences>): Promise<void> => {
     if (!user) throw new Error("User not authenticated");
-    const currentPrefs = user.prefs || {};
-    const updatedUser = await updateUserPrefsInAppwrite({ ...currentPrefs, ...notificationSettings });
-    setUser(updatedUser); // Update context with the new user object
+    const currentPrefs = (user.prefs as UserPreferences) || {};
+    const updatedUser = await updateUserPrefsInAppwrite({ ...currentPrefs, ...newPrefsToUpdate });
+    setUser(updatedUser as AppwriteUser); // Update context with the new user object
   };
   
   const refreshUser = async (): Promise<void> => {
     try {
       const currentUser = await account.get();
-      setUser(currentUser);
+      setUser(currentUser as AppwriteUser);
     } catch (error) {
       console.error("Failed to refresh user", error);
-      if ((error as AppwriteException).code === 401) {
+      if ((error as AppwriteException).code === 401) { // Unauthorized
         setUser(null);
          if (pathname !== '/login' && pathname !== '/signup') {
             router.push('/login');
@@ -133,7 +133,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, signup, updateUserName, updateUserAvatarUrl, updateUserNotificationSetting, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, signup, updateUserName, updateUserAvatarUrl, updateUserPreferences, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

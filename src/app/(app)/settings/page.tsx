@@ -9,18 +9,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { User, Bell, Palette, Shield, Loader2 } from 'lucide-react';
+import { User, Bell, Palette, Shield, Loader2, CheckCircle } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/settings/image-dropzone';
 import { storage, avatarsBucketId, ID } from '@/lib/appwrite';
-import type { Models } from '@/types';
+import type { UserPreferences, AppFontSize, AppTheme } from '@/types'; // Updated types
+
+const fontSizes: { value: AppFontSize; label: string }[] = [
+  { value: 'sm', label: 'Small' },
+  { value: 'default', label: 'Default' },
+  { value: 'lg', label: 'Large' },
+];
+
+const themes: { value: AppTheme; label: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'ocean', label: 'Ocean Blue' },
+  { value: 'forest', label: 'Forest Green' },
+  { value: 'rose', label: 'Rose Pink' },
+];
 
 export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
-  const { user, updateUserName, updateUserAvatarUrl, updateUserNotificationSetting, isLoading: authIsLoading, refreshUser } = useAuth();
+  const { user, updateUserName, updateUserAvatarUrl, updateUserPreferences, isLoading: authIsLoading, refreshUser } = useAuth();
   const { toast } = useToast();
 
   // Profile States
@@ -32,8 +46,12 @@ export default function SettingsPage() {
 
   // Notification States
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
-  const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true); // Default for demo
   const [isSavingNotificationPrefs, setIsSavingNotificationPrefs] = useState(false);
+
+  // Appearance States
+  const [selectedFontSize, setSelectedFontSize] = useState<AppFontSize>('default');
+  const [selectedTheme, setSelectedTheme] = useState<AppTheme>('default');
+  const [isSavingAppearance, setIsSavingAppearance] = useState(false);
 
 
   useEffect(() => {
@@ -44,16 +62,21 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
+      const userPrefs = user.prefs as UserPreferences;
       // Profile
       setNameInput(user.name || '');
-      setAvatarUrlInput(user.prefs?.avatarUrl || '');
+      setAvatarUrlInput(userPrefs?.avatarUrl || '');
       setSelectedAvatarFile(null);
 
-      // Notifications - ensure prefs is treated as Models.Preferences
-      const userPrefs = user.prefs as Models.Preferences & { emailNotificationsEnabled?: boolean, inAppNotificationsEnabled?: boolean };
+      // Notifications
       setEmailNotificationsEnabled(userPrefs?.emailNotificationsEnabled || false);
-      // For in-app, if we decide to save it, retrieve it similarly:
-      // setInAppNotificationsEnabled(userPrefs?.inAppNotificationsEnabled === undefined ? true : userPrefs.inAppNotificationsEnabled);
+      
+      // Appearance
+      setSelectedFontSize(userPrefs?.fontSize || 'default');
+      setSelectedTheme(userPrefs?.theme || 'default');
+      setIsDark(userPrefs?.darkMode === undefined ? document.documentElement.classList.contains('dark') : userPrefs.darkMode);
+
+
     }
   }, [user]);
 
@@ -66,12 +89,13 @@ export default function SettingsPage() {
         document.documentElement.classList.remove('dark');
       }
     }
+    // Note: We'll save darkMode with other appearance settings
   };
 
   const handleAvatarFileSelected = (file: File | null) => {
     setSelectedAvatarFile(file);
     if (!file) {
-      setAvatarUrlInput(user?.prefs?.avatarUrl || '');
+      setAvatarUrlInput((user?.prefs as UserPreferences)?.avatarUrl || '');
     }
   };
 
@@ -119,17 +143,15 @@ export default function SettingsPage() {
         nameChanged = true;
         updatePromises.push(updateUserName(nameInput));
       }
-      // Explicitly check against current prefs, handling undefined
-      const currentAvatarUrl = (user.prefs as Models.Preferences & { avatarUrl?: string })?.avatarUrl || '';
+      const currentAvatarUrl = (user.prefs as UserPreferences)?.avatarUrl || '';
       if (finalAvatarUrl !== currentAvatarUrl) {
         avatarChanged = true;
         updatePromises.push(updateUserAvatarUrl(finalAvatarUrl));
       }
 
-
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises);
-        await refreshUser(); 
+        // refreshUser will be called internally by updateUser... methods if they update context
         let successMessage = "Profile updated successfully!";
         if (nameChanged && avatarChanged) successMessage = "Name and avatar updated!";
         else if (nameChanged) successMessage = "Name updated successfully!";
@@ -151,18 +173,36 @@ export default function SettingsPage() {
     if (!user) return;
     setIsSavingNotificationPrefs(true);
     try {
-      const newPrefs: Partial<Models.Preferences & { emailNotificationsEnabled: boolean }> = {
+      const newPrefs: Partial<UserPreferences> = {
         emailNotificationsEnabled: emailNotificationsEnabled,
-        // inAppNotificationsEnabled: inAppNotificationsEnabled, // if we save this one too
       };
-      await updateUserNotificationSetting(newPrefs);
-      await refreshUser(); // Refresh user to ensure UI reflects saved prefs
+      await updateUserPreferences(newPrefs);
       toast({ title: "Success", description: "Notification preferences saved." });
     } catch (error) {
       console.error("Failed to save notification preferences:", error);
       toast({ variant: "destructive", title: "Save Failed", description: (error as Error).message || "Could not save notification preferences." });
     } finally {
       setIsSavingNotificationPrefs(false);
+    }
+  };
+
+  const handleAppearanceSettingsSave = async () => {
+    if (!user) return;
+    setIsSavingAppearance(true);
+    try {
+      const newPrefs: Partial<UserPreferences> = {
+        fontSize: selectedFontSize,
+        theme: selectedTheme,
+        darkMode: isDark, // Save dark mode state
+      };
+      await updateUserPreferences(newPrefs);
+      // ThemeApplicator will handle applying the styles globally
+      toast({ title: "Success", description: "Appearance settings saved." });
+    } catch (error) {
+      console.error("Failed to save appearance settings:", error);
+      toast({ variant: "destructive", title: "Save Failed", description: (error as Error).message || "Could not save appearance settings." });
+    } finally {
+      setIsSavingAppearance(false);
     }
   };
 
@@ -222,7 +262,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Avatar Image</Label>
                   <ImageDropzone
-                    currentImageUrl={user?.prefs?.avatarUrl}
+                    currentImageUrl={(user?.prefs as UserPreferences)?.avatarUrl}
                     onFileSelected={handleAvatarFileSelected}
                     disabled={isSavingProfile || authIsLoading || isUploadingAvatar}
                   />
@@ -235,8 +275,8 @@ export default function SettingsPage() {
               </div>
               
               <Button onClick={handleProfileSaveChanges} disabled={isSavingProfile || authIsLoading || isUploadingAvatar || (!user)}>
-                {(isSavingProfile || isUploadingAvatar) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save Changes
+                {(isSavingProfile || isUploadingAvatar) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                Save Profile
               </Button>
             </CardContent>
           </Card>
@@ -263,23 +303,22 @@ export default function SettingsPage() {
                   disabled={isSavingNotificationPrefs || authIsLoading}
                 />
               </div>
-              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+              <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg opacity-50 cursor-not-allowed">
                 <Label htmlFor="app-notifications" className="flex flex-col space-y-1">
                   <span>In-App Notifications</span>
                   <span className="font-normal leading-snug text-muted-foreground">
-                    Show notifications directly within the ExperTed application. (Always enabled)
+                    Show notifications directly within the ExperTed application. (Always enabled for demo)
                   </span>
                 </Label>
                 <Switch 
                   id="app-notifications" 
-                  checked={inAppNotificationsEnabled} 
-                  onCheckedChange={setInAppNotificationsEnabled} 
+                  checked={true} // Default for demo
                   disabled 
                 />
               </div>
                <Button onClick={handleNotificationPreferencesSave} disabled={isSavingNotificationPrefs || authIsLoading || !user}>
-                {isSavingNotificationPrefs ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save Preferences
+                {isSavingNotificationPrefs ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                Save Notification Preferences
                </Button>
             </CardContent>
           </Card>
@@ -288,10 +327,10 @@ export default function SettingsPage() {
         <TabsContent value="appearance">
           <Card>
             <CardHeader>
-              <CardTitle>Appearance</CardTitle>
+              <CardTitle>Appearance Customization</CardTitle>
               <CardDescription>Customize the look and feel of the application.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
                <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
                 <Label htmlFor="dark-mode" className="flex flex-col space-y-1 cursor-pointer">
                   <span>Dark Mode</span>
@@ -303,10 +342,40 @@ export default function SettingsPage() {
                   id="dark-mode" 
                   checked={isDark}
                   onCheckedChange={toggleDarkMode}
+                  disabled={isSavingAppearance || authIsLoading}
                 />
               </div>
-              <p className="text-muted-foreground text-sm">More appearance settings (e.g., font size, theme accents) will be available here.</p>
-               <Button disabled>Save Settings (Coming Soon)</Button>
+
+              <div className="space-y-2 p-4 border rounded-lg">
+                <Label htmlFor="font-size">Font Size</Label>
+                <Select value={selectedFontSize} onValueChange={(v) => setSelectedFontSize(v as AppFontSize)} disabled={isSavingAppearance || authIsLoading}>
+                  <SelectTrigger id="font-size">
+                    <SelectValue placeholder="Select font size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontSizes.map(fs => <SelectItem key={fs.value} value={fs.value}>{fs.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                 <p className="text-xs text-muted-foreground">Changes global font size.</p>
+              </div>
+
+              <div className="space-y-2 p-4 border rounded-lg">
+                <Label htmlFor="theme">Application Theme</Label>
+                <Select value={selectedTheme} onValueChange={(v) => setSelectedTheme(v as AppTheme)} disabled={isSavingAppearance || authIsLoading}>
+                  <SelectTrigger id="theme">
+                    <SelectValue placeholder="Select theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {themes.map(th => <SelectItem key={th.value} value={th.value}>{th.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                 <p className="text-xs text-muted-foreground">Changes primary and accent colors.</p>
+              </div>
+              
+               <Button onClick={handleAppearanceSettingsSave} disabled={isSavingAppearance || authIsLoading || !user}>
+                {isSavingAppearance ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                Save Appearance Settings
+               </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -317,18 +386,18 @@ export default function SettingsPage() {
               <CardTitle>Security</CardTitle>
               <CardDescription>Manage your account security settings.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="space-y-1">
                 <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" disabled />
+                <Input id="current-password" type="password" disabled placeholder="Coming Soon" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" disabled />
+                <Input id="new-password" type="password" disabled placeholder="Coming Soon" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" disabled />
+                <Input id="confirm-password" type="password" disabled placeholder="Coming Soon" />
               </div>
               <Button disabled>Change Password (Coming Soon)</Button>
               <Separator />
@@ -339,7 +408,7 @@ export default function SettingsPage() {
                     Enhance your account security by enabling 2FA. (Coming Soon)
                   </span>
                 </Label>
-                <Button variant="outline" disabled>Enable 2FA</Button>
+                <Button variant="outline" disabled>Enable 2FA (Coming Soon)</Button>
               </div>
             </CardContent>
           </Card>
