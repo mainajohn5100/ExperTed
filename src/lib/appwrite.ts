@@ -1,29 +1,28 @@
 
-import { Client as AppwriteClient, Databases, Account, ID, Query, Models } from 'appwrite'; // Added Models
+import { Client as AppwriteClient, Databases, Account, ID, Query, Models, Storage } from 'appwrite';
 
 const client = new AppwriteClient();
 
 const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
 const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
-const apiKey = process.env.APPWRITE_API_KEY; // Used for server-side operations
+const apiKey = process.env.APPWRITE_API_KEY;
 export const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
 export const ticketsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_TICKETS_COLLECTION_ID;
 export const projectsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_PROJECTS_COLLECTION_ID;
 export const notificationsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID;
+export const avatarsBucketId = process.env.NEXT_PUBLIC_APPWRITE_AVATARS_BUCKET_ID;
 
 
-if (!endpoint || !projectId || !databaseId || !ticketsCollectionId || !projectsCollectionId || !notificationsCollectionId) {
+if (!endpoint || !projectId || !databaseId || !ticketsCollectionId || !projectsCollectionId || !notificationsCollectionId || !avatarsBucketId) {
   console.warn(
-    'Appwrite environment variables might be missing. Please check your .env file if Appwrite functionality is not working. Ensure NEXT_PUBLIC_APPWRITE_ENDPOINT, NEXT_PUBLIC_APPWRITE_PROJECT_ID, APPWRITE_API_KEY, NEXT_PUBLIC_APPWRITE_DATABASE_ID, NEXT_PUBLIC_APPWRITE_TICKETS_COLLECTION_ID, NEXT_PUBLIC_APPWRITE_PROJECTS_COLLECTION_ID, and NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID are set.'
+    'Appwrite environment variables might be missing. Please check your .env file if Appwrite functionality is not working. Ensure all NEXT_PUBLIC_ and APPWRITE_API_KEY variables are set.'
   );
 }
 
-// For server-side operations that require an API key, attempt to set it early.
 if (apiKey && typeof window === 'undefined') {
   if (typeof client.setKey === 'function') {
     client.setKey(apiKey);
   } else {
-    // This case should ideally not be reached if the SDK is correct.
     console.error("CRITICAL: Appwrite client.setKey is not a function. SDK might be corrupted or an incompatible version.");
   }
 }
@@ -37,8 +36,8 @@ if (projectId) {
 
 const account = new Account(client);
 const databases = new Databases(client);
+const storage = new Storage(client); // Export storage instance
 
-// New functions for updating user profile
 export const updateUserNameInAppwrite = async (name: string): Promise<Models.User<Models.Preferences>> => {
   return account.updateName(name);
 };
@@ -48,5 +47,4 @@ export const updateUserPrefsInAppwrite = async (prefs: Partial<Models.Preference
 };
 
 
-export { client, account, databases, ID, Query, Models }; // Export Models
-
+export { client, account, databases, storage, ID, Query, Models };

@@ -9,19 +9,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { User, Bell, Palette, Shield, Loader2 } from 'lucide-react'; // Added Loader2
+import { User, Bell, Palette, Shield, Loader2 } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { ImageDropzone } from '@/components/settings/image-dropzone'; // New import
+import { storage, avatarsBucketId, ID } from '@/lib/appwrite'; // New import
 
 export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
-  const { user, updateUserName, updateUserAvatarUrl, isLoading: authIsLoading } = useAuth();
+  const { user, updateUserName, updateUserAvatarUrl, isLoading: authIsLoading, refreshUser } = useAuth();
   const { toast } = useToast();
 
   const [nameInput, setNameInput] = useState('');
   const [avatarUrlInput, setAvatarUrlInput] = useState('');
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
@@ -34,6 +38,7 @@ export default function SettingsPage() {
     if (user) {
       setNameInput(user.name || '');
       setAvatarUrlInput(user.prefs?.avatarUrl || '');
+      setSelectedAvatarFile(null); // Reset selected file when user data changes
     }
   }, [user]);
 
@@ -48,30 +53,73 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAvatarFileSelected = (file: File | null) => {
+    setSelectedAvatarFile(file);
+    if (!file) {
+      // If file is removed, reset avatarUrlInput to current user's avatar or empty
+      setAvatarUrlInput(user?.prefs?.avatarUrl || '');
+    }
+  };
+
+  const uploadAvatarAndGetUrl = async (file: File): Promise<string | null> => {
+    if (!avatarsBucketId) {
+      toast({ variant: "destructive", title: "Upload Error", description: "Avatar bucket ID is not configured." });
+      return null;
+    }
+    setIsUploadingAvatar(true);
+    try {
+      const uploadedFile = await storage.createFile(avatarsBucketId, ID.unique(), file);
+      const fileUrl = storage.getFileView(avatarsBucketId, uploadedFile.$id);
+      toast({ title: "Avatar Uploaded", description: "New avatar ready. Click 'Save Changes' to apply." });
+      return fileUrl.href;
+    } catch (error) {
+      console.error("Failed to upload avatar:", error);
+      toast({ variant: "destructive", title: "Upload Failed", description: (error as Error).message || "Could not upload new avatar." });
+      return null;
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleProfileSaveChanges = async () => {
     if (!user) return;
     setIsSavingProfile(true);
-    let nameChanged = false;
-    let avatarChanged = false;
+    let finalAvatarUrl = avatarUrlInput;
 
     try {
+      if (selectedAvatarFile) {
+        const uploadedUrl = await uploadAvatarAndGetUrl(selectedAvatarFile);
+        if (uploadedUrl) {
+          finalAvatarUrl = uploadedUrl;
+        } else {
+          // Upload failed, don't proceed with saving this avatar change
+          setIsSavingProfile(false);
+          return;
+        }
+      }
+
       const updatePromises = [];
+      let nameChanged = false;
+      let avatarChanged = false;
+
       if (nameInput !== user.name) {
         nameChanged = true;
         updatePromises.push(updateUserName(nameInput));
       }
-      if (avatarUrlInput !== (user.prefs?.avatarUrl || '')) {
+      if (finalAvatarUrl !== (user.prefs?.avatarUrl || '')) {
         avatarChanged = true;
-        updatePromises.push(updateUserAvatarUrl(avatarUrlInput));
+        updatePromises.push(updateUserAvatarUrl(finalAvatarUrl));
       }
 
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises);
+        await refreshUser(); // Refresh user data from context to get latest prefs
         let successMessage = "Profile updated successfully!";
         if (nameChanged && avatarChanged) successMessage = "Name and avatar updated!";
         else if (nameChanged) successMessage = "Name updated successfully!";
-        else if (avatarChanged) successMessage = "Avatar URL updated successfully!";
+        else if (avatarChanged) successMessage = "Avatar updated successfully!";
         toast({ title: "Success", description: successMessage });
+        setSelectedAvatarFile(null); // Clear selected file after successful save
       } else {
         toast({ title: "No Changes", description: "No information was changed." });
       }
@@ -104,35 +152,55 @@ export default function SettingsPage() {
               <CardTitle>User Profile</CardTitle>
               <CardDescription>Manage your personal information and account settings.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    placeholder="Your Name" 
-                    disabled={isSavingProfile || authIsLoading}
-                  />
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6 items-start">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input 
+                      id="name" 
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      placeholder="Your Name" 
+                      disabled={isSavingProfile || authIsLoading || isUploadingAvatar}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={user?.email || ''} readOnly disabled />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="avatarUrl">Avatar URL (or upload below)</Label>
+                    <Input 
+                      id="avatarUrl" 
+                      value={avatarUrlInput}
+                      onChange={(e) => {
+                        setAvatarUrlInput(e.target.value);
+                        setSelectedAvatarFile(null); // Clear file if URL is manually changed
+                      }}
+                      placeholder="https://example.com/avatar.png" 
+                      disabled={isSavingProfile || authIsLoading || isUploadingAvatar || !!selectedAvatarFile}
+                    />
+                    {selectedAvatarFile && <p className="text-xs text-muted-foreground">A new avatar file is selected. The URL will be updated upon save.</p>}
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue={user?.email || ''} readOnly disabled />
+                <div className="space-y-2">
+                  <Label>Avatar Image</Label>
+                  <ImageDropzone
+                    currentImageUrl={user?.prefs?.avatarUrl}
+                    onFileSelected={handleAvatarFileSelected}
+                    disabled={isSavingProfile || authIsLoading || isUploadingAvatar}
+                  />
+                  {isUploadingAvatar && (
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading new avatar...
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="space-y-1">
-                  <Label htmlFor="avatar">Avatar URL</Label>
-                  <Input 
-                    id="avatar" 
-                    value={avatarUrlInput}
-                    onChange={(e) => setAvatarUrlInput(e.target.value)}
-                    placeholder="https://example.com/avatar.png" 
-                    disabled={isSavingProfile || authIsLoading}
-                  />
-              </div>
-              <Button onClick={handleProfileSaveChanges} disabled={isSavingProfile || authIsLoading || (!user)}>
-                {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              
+              <Button onClick={handleProfileSaveChanges} disabled={isSavingProfile || authIsLoading || isUploadingAvatar || (!user)}>
+                {(isSavingProfile) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Changes
               </Button>
             </CardContent>
