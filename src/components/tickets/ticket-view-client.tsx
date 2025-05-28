@@ -34,11 +34,19 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
   const [isSmartReplyLoading, setIsSmartReplyLoading] = useState(false);
   const [isTagSuggestionLoading, setIsTagSuggestionLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [formattedCreatedAt, setFormattedCreatedAt] = useState<string | null>(null);
+  const [formattedUpdatedAt, setFormattedUpdatedAt] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    setTicket(initialTicket); 
+    setTicket(initialTicket);
+    if (initialTicket?.$createdAt) {
+      setFormattedCreatedAt(new Date(initialTicket.$createdAt).toLocaleString());
+    }
+    if (initialTicket?.$updatedAt) {
+      setFormattedUpdatedAt(new Date(initialTicket.$updatedAt).toLocaleString());
+    }
   }, [initialTicket]);
 
   const parsedReplies = useMemo(() => {
@@ -62,6 +70,13 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
       const updatedDoc = await updateTicketInAppwrite(ticket.$id, dataToSave); 
       if (updatedDoc) {
         setTicket(updatedDoc); 
+        // Update formatted dates if the document was updated
+        if (updatedDoc.$createdAt) {
+          setFormattedCreatedAt(new Date(updatedDoc.$createdAt).toLocaleString());
+        }
+        if (updatedDoc.$updatedAt) {
+          setFormattedUpdatedAt(new Date(updatedDoc.$updatedAt).toLocaleString());
+        }
         toast({ title: "Ticket Updated", description: "Changes saved to Appwrite." });
         router.refresh();
       } else {
@@ -167,7 +182,7 @@ export function TicketViewClient({ ticket: initialTicket }: TicketViewClientProp
               </Link>
             </div>
             <div className="text-sm text-muted-foreground mt-2">
-              Created: {new Date(ticket.$createdAt).toLocaleString()} | Last Updated: {new Date(ticket.$updatedAt).toLocaleString()}
+              Created: {formattedCreatedAt || 'Loading...'} | Last Updated: {formattedUpdatedAt || 'Loading...'}
             </div>
           </CardHeader>
           <CardContent>
