@@ -1,9 +1,9 @@
 
 'use client';
 
-import type { AppwriteUser } from '@/types';
+import type { AppwriteUser, Models } from '@/types'; // Added Models
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { account, ID } from '@/lib/appwrite'; // Assuming ID might be needed for signup name
+import { account, ID, updateUserNameInAppwrite, updateUserPrefsInAppwrite } from '@/lib/appwrite'; // Added update functions
 import { AppwriteException } from 'appwrite';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -13,7 +13,9 @@ interface AuthContextType {
   login: (email_param: string, password_param: string) => Promise<AppwriteUser | null>;
   logout: () => Promise<void>;
   signup: (email_param: string, password_param: string, name_param: string) => Promise<AppwriteUser | null>;
-  // Add other auth functions here if needed, e.g., sendVerificationEmail, updatePassword
+  updateUserName: (newName: string) => Promise<void>;
+  updateUserAvatarUrl: (newAvatarUrl: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,7 +37,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(currentUser);
     } catch (error) {
       setUser(null);
-      // Don't redirect here, let protected routes handle it
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +58,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.error('Failed to login', error);
       setUser(null);
       setIsLoading(false);
-      throw error; // Re-throw to handle in UI
+      throw error;
     }
   };
 
@@ -68,11 +69,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(null);
     } catch (error) {
       console.error('Failed to logout', error);
-      // Still set user to null even if Appwrite logout fails, to clear client state
       setUser(null);
     } finally {
       setIsLoading(false);
-      // Redirect to login page after logout, unless already on a public page
       if (pathname !== '/login' && pathname !== '/signup') {
         router.push('/login');
       }
@@ -83,7 +82,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     try {
       await account.create(ID.unique(), email_param, password_param, name_param);
-      // Automatically log in the user after signup
       await account.createEmailPasswordSession(email_param, password_param);
       const currentUser = await account.get();
       setUser(currentUser);
@@ -93,14 +91,44 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.error('Failed to signup', error);
       setUser(null);
       setIsLoading(false);
-      throw error; // Re-throw to handle in UI
+      throw error;
     }
   };
+
+  const updateUserName = async (newName: string): Promise<void> => {
+    if (!user) throw new Error("User not authenticated");
+    const updatedUser = await updateUserNameInAppwrite(newName);
+    setUser(updatedUser); // Update context with the new user object
+  };
+
+  const updateUserAvatarUrl = async (newAvatarUrl: string): Promise<void> => {
+    if (!user) throw new Error("User not authenticated");
+    const currentPrefs = user.prefs || {};
+    const updatedUser = await updateUserPrefsInAppwrite({ ...currentPrefs, avatarUrl: newAvatarUrl });
+    setUser(updatedUser); // Update context with the new user object
+  };
   
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const currentUser = await account.get();
+      setUser(currentUser);
+    } catch (error) {
+      console.error("Failed to refresh user", error);
+      // Potentially handle logout if user session is invalid
+      if ((error as AppwriteException).code === 401) {
+        setUser(null);
+         if (pathname !== '/login' && pathname !== '/signup') {
+            router.push('/login');
+         }
+      }
+    }
+  };
+
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, signup }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, signup, updateUserName, updateUserAvatarUrl, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
 };
+

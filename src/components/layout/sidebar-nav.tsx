@@ -40,7 +40,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavItem {
   href: string;
@@ -63,7 +63,7 @@ const ticketSubItems: NavItem[] = [
 
 const projectSubItems: NavItem[] = [
   { href: '/projects/all', label: 'All Projects', icon: List, matchExact: true },
-  { href: '/projects/new', label: 'New Projects', icon: PlusCircle, matchExact: true },
+  { href: '/projects/new', label: 'New Projects', icon: PlusCircle, matchExact: true }, // Placeholder, actual new project form is /projects/new-project
   { href: '/projects/active', label: 'Active Projects', icon: PlayCircle, matchExact: true },
   { href: '/projects/on-hold', label: 'On Hold', icon: PauseCircle, matchExact: true },
   { href: '/projects/completed', label: 'Completed', icon: CheckCircle2, matchExact: true },
@@ -83,7 +83,7 @@ const bottomNavItems: NavItem[] = [
 export function SidebarNav() {
   const pathname = usePathname();
   const { state: sidebarState, isMobile, setOpenMobile } = useSidebar();
-  const { user } = useAuth(); // Get user from useAuth
+  const { user } = useAuth();
 
   const isActive = (href: string, matchExact?: boolean) => {
     if (matchExact) {
@@ -109,7 +109,7 @@ export function SidebarNav() {
         }
       }
     });
-  }, [pathname, openSubMenus]); // Removed mainNavItems from dependencies as it's constant
+  }, [pathname, openSubMenus]);
 
   const renderNavItems = (items: NavItem[]) => {
     return items.map((item) => (
@@ -193,7 +193,7 @@ export function SidebarNav() {
           <div className={cn("p-2", sidebarState === 'collapsed' && "hidden")}>
             <div className="flex items-center gap-2">
               <Avatar className="h-9 w-9">
-                <AvatarImage src="https://placehold.co/100x100.png" alt={user.name || 'User Avatar'} data-ai-hint="user avatar" />
+                <AvatarImage src={user.prefs?.avatarUrl || `https://placehold.co/100x100.png?text=${getAvatarFallback()}`} alt={user.name || 'User Avatar'} data-ai-hint="user avatar" />
                 <AvatarFallback>{getAvatarFallback()}</AvatarFallback>
               </Avatar>
               <div>

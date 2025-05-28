@@ -1,5 +1,5 @@
 
-import { Client as AppwriteClient, Databases, Account, ID, Query } from 'appwrite';
+import { Client as AppwriteClient, Databases, Account, ID, Query, Models } from 'appwrite'; // Added Models
 
 const client = new AppwriteClient();
 
@@ -38,4 +38,15 @@ if (projectId) {
 const account = new Account(client);
 const databases = new Databases(client);
 
-export { client, account, databases, ID, Query };
+// New functions for updating user profile
+export const updateUserNameInAppwrite = async (name: string): Promise<Models.User<Models.Preferences>> => {
+  return account.updateName(name);
+};
+
+export const updateUserPrefsInAppwrite = async (prefs: Partial<Models.Preferences>): Promise<Models.User<Models.Preferences>> => {
+  return account.updatePrefs(prefs);
+};
+
+
+export { client, account, databases, ID, Query, Models }; // Export Models
+

@@ -9,20 +9,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { User, Bell, Palette, Shield } from 'lucide-react';
+import { User, Bell, Palette, Shield, Loader2 } from 'lucide-react'; // Added Loader2
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
-  const { user } = useAuth(); // Get authenticated user
+  const { user, updateUserName, updateUserAvatarUrl, isLoading: authIsLoading } = useAuth();
+  const { toast } = useToast();
+
+  const [nameInput, setNameInput] = useState('');
+  const [avatarUrlInput, setAvatarUrlInput] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
       setIsDark(document.documentElement.classList.contains('dark'));
     }
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      setNameInput(user.name || '');
+      setAvatarUrlInput(user.prefs?.avatarUrl || '');
+    }
+  }, [user]);
 
   const toggleDarkMode = (checked: boolean) => {
     setIsDark(checked);
@@ -34,6 +47,42 @@ export default function SettingsPage() {
       }
     }
   };
+
+  const handleProfileSaveChanges = async () => {
+    if (!user) return;
+    setIsSavingProfile(true);
+    let nameChanged = false;
+    let avatarChanged = false;
+
+    try {
+      const updatePromises = [];
+      if (nameInput !== user.name) {
+        nameChanged = true;
+        updatePromises.push(updateUserName(nameInput));
+      }
+      if (avatarUrlInput !== (user.prefs?.avatarUrl || '')) {
+        avatarChanged = true;
+        updatePromises.push(updateUserAvatarUrl(avatarUrlInput));
+      }
+
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises);
+        let successMessage = "Profile updated successfully!";
+        if (nameChanged && avatarChanged) successMessage = "Name and avatar updated!";
+        else if (nameChanged) successMessage = "Name updated successfully!";
+        else if (avatarChanged) successMessage = "Avatar URL updated successfully!";
+        toast({ title: "Success", description: successMessage });
+      } else {
+        toast({ title: "No Changes", description: "No information was changed." });
+      }
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: (error as Error).message || "Could not update profile." });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
 
   return (
     <>
@@ -59,7 +108,13 @@ export default function SettingsPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue={user?.name || ''} placeholder="Your Name" />
+                  <Input 
+                    id="name" 
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    placeholder="Your Name" 
+                    disabled={isSavingProfile || authIsLoading}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="email">Email</Label>
@@ -67,10 +122,19 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                  <Label htmlFor="avatar">Avatar URL (Coming Soon)</Label>
-                  <Input id="avatar" placeholder="https://example.com/avatar.png" disabled />
+                  <Label htmlFor="avatar">Avatar URL</Label>
+                  <Input 
+                    id="avatar" 
+                    value={avatarUrlInput}
+                    onChange={(e) => setAvatarUrlInput(e.target.value)}
+                    placeholder="https://example.com/avatar.png" 
+                    disabled={isSavingProfile || authIsLoading}
+                  />
               </div>
-              <Button disabled>Save Changes (Coming Soon)</Button>
+              <Button onClick={handleProfileSaveChanges} disabled={isSavingProfile || authIsLoading || (!user)}>
+                {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Changes
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -100,7 +164,7 @@ export default function SettingsPage() {
                 </Label>
                 <Switch id="app-notifications" defaultChecked />
               </div>
-               <Button>Save Preferences</Button>
+               <Button disabled>Save Preferences (Coming Soon)</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -126,7 +190,7 @@ export default function SettingsPage() {
                 />
               </div>
               <p className="text-muted-foreground text-sm">More appearance settings (e.g., font size, theme accents) will be available here.</p>
-               <Button>Save Settings</Button>
+               <Button disabled>Save Settings (Coming Soon)</Button>
             </CardContent>
           </Card>
         </TabsContent>
