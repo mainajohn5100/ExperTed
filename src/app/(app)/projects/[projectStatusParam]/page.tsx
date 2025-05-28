@@ -32,7 +32,7 @@ function ProjectCard({ project }: { project: Project }) {
             {project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('-', ' ')}
           </Badge>
         </div>
-        <CardDescription>Created: {new Date(project.createdAt).toLocaleDateString()}</CardDescription>
+        <CardDescription>Created: {new Date(project.$createdAt).toLocaleDateString()}</CardDescription>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground line-clamp-3">{project.description}</p>
@@ -49,11 +49,12 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 interface ProjectsByStatusPageProps {
-  params: { projectStatusParam: string };
+  params: { projectStatusParam: ProjectStatusKey }; // Ensure this matches the directory name
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default async function ProjectsByStatusPage({ params }: ProjectsByStatusPageProps) {
-  console.log('[ProjectsByStatusPage] Component loaded. Received full props:', JSON.stringify({ params }, null, 2));
+export default async function ProjectsByStatusPage({ params, searchParams }: ProjectsByStatusPageProps) {
+  console.log('[ProjectsByStatusPage] Component loaded. Received full props:', JSON.stringify({ params, searchParams }, null, 2));
   console.log('[ProjectsByStatusPage] Received params object:', JSON.stringify(params, null, 2));
   
   try {
@@ -99,7 +100,7 @@ export default async function ProjectsByStatusPage({ params }: ProjectsByStatusP
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard key={project.$id} project={project} />
             ))}
           </div>
         )}

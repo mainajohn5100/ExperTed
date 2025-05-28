@@ -8,13 +8,12 @@ const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
 const apiKey = process.env.APPWRITE_API_KEY; // Used for server-side operations
 export const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
 export const ticketsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_TICKETS_COLLECTION_ID;
-// Add other collection IDs here as needed, e.g.:
-// export const projectsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_PROJECTS_COLLECTION_ID!;
+export const projectsCollectionId = process.env.NEXT_PUBLIC_APPWRITE_PROJECTS_COLLECTION_ID;
 
 
-if (!endpoint || !projectId || !databaseId || !ticketsCollectionId) {
+if (!endpoint || !projectId || !databaseId || !ticketsCollectionId || !projectsCollectionId) {
   console.warn(
-    'Appwrite environment variables might be missing. Please check your .env file if Appwrite functionality is not working.'
+    'Appwrite environment variables might be missing. Please check your .env file if Appwrite functionality is not working. Ensure NEXT_PUBLIC_APPWRITE_ENDPOINT, NEXT_PUBLIC_APPWRITE_PROJECT_ID, APPWRITE_API_KEY, NEXT_PUBLIC_APPWRITE_DATABASE_ID, NEXT_PUBLIC_APPWRITE_TICKETS_COLLECTION_ID, and NEXT_PUBLIC_APPWRITE_PROJECTS_COLLECTION_ID are set.'
   );
 }
 
@@ -39,3 +38,4 @@ const account = new Account(client);
 const databases = new Databases(client);
 
 export { client, account, databases, ID, Query };
+

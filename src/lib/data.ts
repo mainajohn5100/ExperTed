@@ -1,56 +1,15 @@
 
-import type { Ticket, Project, User, TicketStatusFilter, TicketDocumentStatus, ProjectStatusKey } from '@/types';
-import { databases, databaseId, ticketsCollectionId, Query, ID } from './appwrite';
+import type { Ticket, Project, User, TicketStatusFilter, TicketDocumentStatus, ProjectDocumentStatus, ProjectStatusKey } from '@/types';
+import { databases, databaseId, ticketsCollectionId, projectsCollectionId, Query, ID } from './appwrite';
 import { formatISO, startOfDay, endOfDay } from 'date-fns';
 
-// Mock data for users and projects will remain for now
+// Mock data for users will remain for now
 export const mockUsers: User[] = [
   { id: 'user-1', name: 'Alice Wonderland', avatar: 'https://placehold.co/100x100.png' },
   { id: 'user-2', name: 'Bob The Builder', avatar: 'https://placehold.co/100x100.png' },
   { id: 'user-3', name: 'Charlie Chaplin', avatar: 'https://placehold.co/100x100.png' },
 ];
 
-export const mockProjects: Project[] = [
-  {
-    id: 'PROJ-001',
-    name: 'Website Redesign Q3',
-    description: 'Complete redesign of the company website with new branding and improved UX.',
-    status: 'active',
-    createdAt: '2024-03-01T00:00:00Z',
-    updatedAt: '2024-05-01T00:00:00Z',
-    deadline: '2024-09-30T00:00:00Z',
-    teamMembers: ['Alice Wonderland', 'Bob The Builder'],
-  },
-  {
-    id: 'PROJ-002',
-    name: 'Mobile App v2.0 Launch',
-    description: 'Develop and launch version 2.0 of the mobile application with new features.',
-    status: 'on-hold',
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-04-10T00:00:00Z',
-    deadline: '2024-07-31T00:00:00Z',
-    teamMembers: ['Charlie Chaplin'],
-  },
-  {
-    id: 'PROJ-003',
-    name: 'Knowledge Base Setup',
-    description: 'Create and populate a new knowledge base for customer self-service.',
-    status: 'completed',
-    createdAt: '2023-11-01T00:00:00Z',
-    updatedAt: '2024-02-28T00:00:00Z',
-    teamMembers: ['Alice Wonderland'],
-  },
-  {
-    id: 'PROJ-004',
-    name: 'New API Endpoint Development',
-    description: 'Develop new API endpoints for partner integrations.',
-    status: 'new',
-    createdAt: '2024-05-01T00:00:00Z',
-    updatedAt: '2024-05-01T00:00:00Z',
-    deadline: '2024-06-30T00:00:00Z',
-    teamMembers: ['Bob The Builder', 'Charlie Chaplin'],
-  }
-];
 
 const logAppwriteError = (context: string, error: any) => {
   console.error(`Appwrite error in ${context}:`, error?.message || String(error));
@@ -74,7 +33,6 @@ const logAppwriteError = (context: string, error: any) => {
 export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$createdAt' | '$updatedAt'>): Promise<Ticket | undefined> => {
   if (!databaseId || !ticketsCollectionId) {
     console.error("Appwrite databaseId or ticketsCollectionId is missing. Check .env variables.");
-    // throw new Error("Appwrite configuration is incomplete.");
     return undefined;
   }
   try {
@@ -87,7 +45,6 @@ export const createTicketInAppwrite = async (ticketData: Omit<Ticket, '$id' | '$
     return document as unknown as Ticket;
   } catch (error) {
     logAppwriteError("createTicketInAppwrite", error);
-    // throw error; // Re-throwing might cause unhandled rejection if not caught upstream
     return undefined;
   }
 };
@@ -122,7 +79,7 @@ export const getTicketById = async (id: string): Promise<Ticket | undefined> => 
     return document as unknown as Ticket;
   } catch (error) {
     logAppwriteError(`getTicketById (id: "${id}")`, error);
-    if ((error as any)?.code === 404) { // Added optional chaining for safety
+    if ((error as any)?.code === 404) {
         return undefined;
     }
     return undefined; 
@@ -170,7 +127,7 @@ export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Pa
     return document as unknown as Ticket;
   } catch (error) {
     logAppwriteError(`updateTicketInAppwrite (ticketId: ${ticketId})`, error);
-    if ((error as any)?.code === 404) { // Added optional chaining
+    if ((error as any)?.code === 404) {
         return undefined;
     }
     return undefined;
@@ -178,16 +135,97 @@ export const updateTicketInAppwrite = async (ticketId: string, updatedFields: Pa
 }
 
 
-// --- Project Functions (still using mock data) ---
+// --- Project Functions (using Appwrite) ---
+
+export const createProjectInAppwrite = async (projectData: Omit<Project, '$id' | '$createdAt' | '$updatedAt'>): Promise<Project | undefined> => {
+  if (!databaseId || !projectsCollectionId) {
+    console.error("Appwrite databaseId or projectsCollectionId is missing. Check .env variables.");
+    return undefined;
+  }
+  try {
+    // Ensure deadline is either an ISO string or null for Appwrite
+    const dataToSave = {
+      ...projectData,
+      deadline: projectData.deadline ? formatISO(new Date(projectData.deadline)) : null,
+      teamMembers: projectData.teamMembers || [], // Ensure teamMembers is an array
+    };
+
+    const document = await databases.createDocument(
+      databaseId,
+      projectsCollectionId,
+      ID.unique(),
+      dataToSave
+    );
+    return document as unknown as Project;
+  } catch (error) {
+    logAppwriteError("createProjectInAppwrite", error);
+    return undefined;
+  }
+};
+
 export const getProjectsByStatus = async (status: ProjectStatusKey): Promise<Project[]> => {
-  // Simulate async behavior
-  await new Promise(resolve => setTimeout(resolve, 50)); 
-  if (status === 'all') return mockProjects;
-  return mockProjects.filter(project => project.status === status);
+  if (!databaseId || !projectsCollectionId) {
+    console.error("Appwrite databaseId or projectsCollectionId is missing. Check .env variables.");
+    return [];
+  }
+  try {
+    const queries = [];
+    if (status !== 'all') {
+      queries.push(Query.equal('status', status as ProjectDocumentStatus));
+    }
+    queries.push(Query.orderDesc('$createdAt'));
+    
+    const response = await databases.listDocuments(databaseId, projectsCollectionId, queries);
+    return response.documents as unknown as Project[];
+  } catch (error) {
+    logAppwriteError(`getProjectsByStatus (status: "${status}")`, error);
+    return []; 
+  }
 };
 
 export const getProjectById = async (id: string): Promise<Project | undefined> => {
-  // Simulate async behavior
-  await new Promise(resolve => setTimeout(resolve, 50));
-  return mockProjects.find(project => project.id === id);
+  if (!databaseId || !projectsCollectionId) {
+    console.error("Appwrite databaseId or projectsCollectionId is missing. Check .env variables.");
+    return undefined;
+  }
+  try {
+    const document = await databases.getDocument(databaseId, projectsCollectionId, id);
+    return document as unknown as Project;
+  } catch (error) {
+    logAppwriteError(`getProjectById (id: "${id}")`, error);
+    if ((error as any)?.code === 404) {
+        return undefined;
+    }
+    return undefined; 
+  }
+};
+
+// Example update function, can be expanded later
+export const updateProjectInAppwrite = async (projectId: string, updatedFields: Partial<Omit<Project, '$id' | '$createdAt' | '$updatedAt'>>): Promise<Project | undefined> => {
+  if (!databaseId || !projectsCollectionId) {
+    console.error("Appwrite databaseId or projectsCollectionId is missing. Check .env variables.");
+    return undefined;
+  }
+  try {
+    const dataToUpdate = { ...updatedFields };
+    if (dataToUpdate.deadline) {
+      dataToUpdate.deadline = formatISO(new Date(dataToUpdate.deadline));
+    }
+    if (dataToUpdate.teamMembers && !Array.isArray(dataToUpdate.teamMembers)) {
+        // Assuming teamMembers should always be an array, if not already.
+        // Or handle conversion if it's passed differently.
+        dataToUpdate.teamMembers = []; 
+    }
+    
+    const document = await databases.updateDocument(
+      databaseId,
+      projectsCollectionId,
+      projectId,
+      dataToUpdate
+    );
+    return document as unknown as Project;
+  } catch (error) {
+    logAppwriteError(`updateProjectInAppwrite (projectId: ${projectId})`, error);
+    return undefined;
+  }
 };

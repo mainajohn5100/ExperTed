@@ -2,7 +2,9 @@
 export type TicketDocumentStatus = "new" | "pending" | "on-hold" | "closed" | "active" | "terminated";
 export type TicketStatusFilter = "all" | TicketDocumentStatus;
 
-export type ProjectStatusKey = "all" | "new" | "active" | "on-hold" | "completed";
+export type ProjectDocumentStatus = "new" | "active" | "on-hold" | "completed";
+export type ProjectStatusKey = "all" | ProjectDocumentStatus;
+
 
 export interface TicketReply {
   id: string;
@@ -19,7 +21,7 @@ export interface Ticket {
   customerEmail: string;
   $createdAt: string; // ISO date string
   $updatedAt: string; // ISO date string
-  status: TicketDocumentStatus; // Changed from TicketStatus
+  status: TicketDocumentStatus;
   tags: string[];
   assignedTo?: string;
   priority: "low" | "medium" | "high" | "urgent";
@@ -28,15 +30,14 @@ export interface Ticket {
   userId: string;
 }
 
-// Project type remains unchanged for now, using mock data
 export interface Project {
-  id: string;
+  $id: string;
   name: string;
   description: string;
-  status: ProjectStatusKey;
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
-  deadline?: string; // ISO date string
+  status: ProjectDocumentStatus;
+  $createdAt: string; // ISO date string
+  $updatedAt: string; // ISO date string
+  deadline?: string | null; // ISO date string or null
   teamMembers?: string[]; // Array of user IDs/names
 }
 
@@ -45,3 +46,7 @@ export interface User {
   name: string;
   avatar?: string; // URL to avatar image
 }
+
+export type TicketPriority = Ticket['priority'];
+export type TicketChannel = Ticket['channel'];
+
