@@ -1,3 +1,6 @@
+
+'use client'; // Added 'use client' as theme toggling is client-side
+
 import { PageTitle } from '@/components/common/page-title';
 import { AppHeader } from '@/components/layout/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,9 +11,32 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { User, Bell, Palette, Shield } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
+import { useEffect, useState } from 'react';
 
 
 export default function SettingsPage() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Check initial theme from class on html element or localStorage (if implemented)
+    if (typeof document !== 'undefined') {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    }
+  }, []);
+
+  const toggleDarkMode = (checked: boolean) => {
+    setIsDark(checked);
+    if (typeof document !== 'undefined') {
+      if (checked) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      // Optionally: save preference to localStorage
+      // localStorage.setItem('theme', checked ? 'dark' : 'light');
+    }
+  };
+
   return (
     <>
     <AppHeader title="Settings" />
@@ -92,15 +118,14 @@ export default function SettingsPage() {
                 <Label htmlFor="dark-mode" className="flex flex-col space-y-1">
                   <span>Dark Mode</span>
                   <span className="font-normal leading-snug text-muted-foreground">
-                    Enable dark theme for the application. (Note: Full dark theme support may vary)
+                    Enable dark theme for the application.
                   </span>
                 </Label>
-                <Switch id="dark-mode" onCheckedChange={(checked) => {
-                  if (typeof document !== 'undefined') { // Ensure document is defined (client-side)
-                    if (checked) document.documentElement.classList.add('dark');
-                    else document.documentElement.classList.remove('dark');
-                  }
-                }}/>
+                <Switch 
+                  id="dark-mode" 
+                  checked={isDark}
+                  onCheckedChange={toggleDarkMode}
+                />
               </div>
               <p className="text-muted-foreground text-sm">More appearance settings (e.g., font size, theme accents) will be available here.</p>
                <Button>Save Settings</Button>

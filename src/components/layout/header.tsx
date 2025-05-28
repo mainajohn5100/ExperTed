@@ -3,7 +3,7 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Bell, UserCircle, Settings, LogOut } from 'lucide-react';
+import { Bell, UserCircle, Settings, LogOut, Maximize, Minimize } from 'lucide-react';
 import { PageTitle } from '@/components/common/page-title';
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect, useCallback } from 'react';
 
 interface AppHeaderProps {
   title?: string;
@@ -30,6 +31,52 @@ const mockNotifications = [
 
 export function AppHeader({ title, children }: AppHeaderProps) {
   const { toast } = useToast();
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const handleFullScreenChange = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      setIsFullScreen(!!document.fullscreenElement);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('fullscreenchange', handleFullScreenChange);
+      return () => {
+        document.removeEventListener('fullscreenchange', handleFullScreenChange);
+      };
+    }
+  }, [handleFullScreenChange]);
+
+  const toggleFullScreen = async () => {
+    if (typeof document === 'undefined') return;
+
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+        setIsFullScreen(true);
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "Fullscreen Error",
+          description: `Could not enter fullscreen mode: ${(err as Error).message}`,
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        try {
+          await document.exitFullscreen();
+          setIsFullScreen(false);
+        } catch (err) {
+           toast({
+            variant: "destructive",
+            title: "Fullscreen Error",
+            description: `Could not exit fullscreen mode: ${(err as Error).message}`,
+          });
+        }
+      }
+    }
+  };
 
   const handleLogout = () => {
     // In a real app, this would call an authentication service to log out.
@@ -45,13 +92,18 @@ export function AppHeader({ title, children }: AppHeaderProps) {
         <SidebarTrigger />
       </div>
       {title && <PageTitle title={title} className="text-xl md:text-2xl hidden md:block mb-0" />} {/* mb-0 to override default */}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1 md:gap-2"> {/* Reduced gap for more space */}
         {children}
+
+        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9" onClick={toggleFullScreen} title={isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
+          {isFullScreen ? <Minimize className="h-4 w-4 md:h-5 md:w-5" /> : <Maximize className="h-4 w-4 md:h-5 md:w-5" />}
+          <span className="sr-only">{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</span>
+        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Bell className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9">
+              <Bell className="h-4 w-4 md:h-5 md:w-5" />
               <span className="sr-only">Notifications</span>
             </Button>
           </DropdownMenuTrigger>
@@ -81,8 +133,8 @@ export function AppHeader({ title, children }: AppHeaderProps) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <UserCircle className="h-6 w-6" />
+            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9">
+              <UserCircle className="h-5 w-5 md:h-6 md:w-6" />
               <span className="sr-only">User Profile</span>
             </Button>
           </DropdownMenuTrigger>
