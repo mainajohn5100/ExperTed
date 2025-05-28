@@ -1,4 +1,6 @@
 
+import type { Models } from 'appwrite';
+
 export type TicketDocumentStatus = "new" | "pending" | "on-hold" | "closed" | "active" | "terminated";
 export type TicketStatusFilter = "all" | TicketDocumentStatus;
 
@@ -9,7 +11,7 @@ export type ProjectStatusKey = "all" | ProjectDocumentStatus;
 
 export interface TicketReply {
   id: string;
-  userId: string;
+  userId: string; // User who wrote the reply
   userName: string;
   content: string;
   createdAt: string; // ISO date string
@@ -24,11 +26,11 @@ export interface Ticket {
   $updatedAt: string; // ISO date string
   status: TicketDocumentStatus;
   tags: string[];
-  assignedTo?: string;
+  assignedTo?: string; // ID of an agent/user
   priority: "low" | "medium" | "high" | "urgent";
   channel: "email" | "sms" | "social-media" | "web-form" | "manual";
   replies?: string; // JSON string of TicketReply[]
-  userId: string;
+  userId: string; // User who created/owns the ticket
 }
 
 export interface Project {
@@ -40,13 +42,19 @@ export interface Project {
   $updatedAt: string; // ISO date string
   deadline?: string | null; // ISO date string or null
   teamMembers?: string[]; // Array of user IDs/names
+  userId?: string; // User who created/owns the project
 }
 
 export interface User {
-  id: string;
+  id: string; // Generic user ID
   name: string;
+  email?: string;
   avatar?: string; // URL to avatar image
 }
+
+// Appwrite specific user model
+export type AppwriteUser = Models.User<Models.Preferences>;
+
 
 export type TicketPriority = Ticket['priority'];
 export type TicketChannel = Ticket['channel'];

@@ -1,5 +1,5 @@
 
-'use client'; // Added 'use client' as theme toggling is client-side
+'use client';
 
 import { PageTitle } from '@/components/common/page-title';
 import { AppHeader } from '@/components/layout/header';
@@ -12,13 +12,13 @@ import { Switch } from '@/components/ui/switch';
 import { User, Bell, Palette, Shield } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from 'react';
-
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 
 export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
+  const { user } = useAuth(); // Get authenticated user
 
   useEffect(() => {
-    // Check initial theme from class on html element or localStorage (if implemented)
     if (typeof document !== 'undefined') {
       setIsDark(document.documentElement.classList.contains('dark'));
     }
@@ -32,8 +32,6 @@ export default function SettingsPage() {
       } else {
         document.documentElement.classList.remove('dark');
       }
-      // Optionally: save preference to localStorage
-      // localStorage.setItem('theme', checked ? 'dark' : 'light');
     }
   };
 
@@ -61,18 +59,18 @@ export default function SettingsPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue="John Doe" />
+                  <Input id="name" defaultValue={user?.name || ''} placeholder="Your Name" />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="john.doe@example.com" />
+                  <Input id="email" type="email" defaultValue={user?.email || ''} readOnly disabled />
                 </div>
               </div>
               <div className="space-y-1">
-                  <Label htmlFor="avatar">Avatar URL</Label>
-                  <Input id="avatar" placeholder="https://example.com/avatar.png" />
+                  <Label htmlFor="avatar">Avatar URL (Coming Soon)</Label>
+                  <Input id="avatar" placeholder="https://example.com/avatar.png" disabled />
               </div>
-              <Button>Save Changes</Button>
+              <Button disabled>Save Changes (Coming Soon)</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -88,10 +86,10 @@ export default function SettingsPage() {
                 <Label htmlFor="email-notifications" className="flex flex-col space-y-1">
                   <span>Email Notifications</span>
                   <span className="font-normal leading-snug text-muted-foreground">
-                    Receive notifications about new tickets and updates via email.
+                    Receive notifications about new tickets and updates via email. (Coming Soon)
                   </span>
                 </Label>
-                <Switch id="email-notifications" defaultChecked />
+                <Switch id="email-notifications" defaultChecked disabled />
               </div>
               <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
                 <Label htmlFor="app-notifications" className="flex flex-col space-y-1">
@@ -142,23 +140,23 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" />
+                <Input id="current-password" type="password" disabled />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" />
+                <Input id="new-password" type="password" disabled />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" />
+                <Input id="confirm-password" type="password" disabled />
               </div>
-              <Button>Change Password</Button>
+              <Button disabled>Change Password (Coming Soon)</Button>
               <Separator />
               <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
                 <Label htmlFor="2fa" className="flex flex-col space-y-1">
                   <span>Two-Factor Authentication (2FA)</span>
                   <span className="font-normal leading-snug text-muted-foreground">
-                    Enhance your account security by enabling 2FA.
+                    Enhance your account security by enabling 2FA. (Coming Soon)
                   </span>
                 </Label>
                 <Button variant="outline" disabled>Enable 2FA</Button>

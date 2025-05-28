@@ -1,11 +1,13 @@
+
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google'; // Changed from Geist_Sans
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { AuthProvider } from '@/contexts/AuthContext';
 
-const fontSans = Inter({ // Changed from Geist_Sans to Inter
-  variable: '--font-sans', // Using a more generic variable name
+const fontSans = Inter({ 
+  variable: '--font-sans',
   subsets: ['latin'],
 });
 
@@ -21,11 +23,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${fontSans.variable} font-sans antialiased`}> {/* Using the new variable */}
-        <SidebarProvider defaultOpen>
-          {children}
-        </SidebarProvider>
-        <Toaster />
+      <body className={`${fontSans.variable} font-sans antialiased`}>
+        <AuthProvider>
+          <SidebarProvider defaultOpen>
+            {children}
+          </SidebarProvider>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

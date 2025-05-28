@@ -19,14 +19,16 @@ import type { Ticket, TicketPriority, TicketChannel, TicketDocumentStatus } from
 import { AppHeader } from "@/components/layout/header";
 import { PageTitle } from "@/components/common/page-title";
 import { createTicketInAppwrite, createNotification } from '@/lib/data';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 
 const priorities: TicketPriority[] = ["low", "medium", "high", "urgent"];
 const channels: TicketChannel[] = ["email", "sms", "social-media", "web-form", "manual"];
-const ADMIN_USER_ID = "admin_user"; // Placeholder for actual admin user ID
+const ADMIN_USER_ID = "admin_user"; 
 
 export default function NewTicketPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get authenticated user
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -83,7 +85,7 @@ export default function NewTicketPage() {
       const notificationResult = await notifyAdmin(notificationInput);
       if (notificationResult.sent && notificationResult.notificationMessage) {
         await createNotification({
-          userId: ADMIN_USER_ID, // Target user for the notification
+          userId: ADMIN_USER_ID, 
           message: notificationResult.notificationMessage,
           href: `/tickets/view/${ticketId}`,
         });
@@ -91,12 +93,15 @@ export default function NewTicketPage() {
       }
     } catch (error) {
       console.error("Failed to send/store admin notification:", error);
-      // Optionally toast a silent failure or log, as primary action (ticket creation) succeeded
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to create a ticket." });
+      return;
+    }
     setIsSubmitting(true);
 
     if (!title.trim() || !description.trim() || !customerName.trim() || !customerEmail.trim()) {
@@ -114,7 +119,7 @@ export default function NewTicketPage() {
       channel,
       tags: currentTags,
       status: 'new' as TicketDocumentStatus, 
-      userId: 'mock-user-id', // Replace with actual user ID if auth is implemented
+      userId: user.$id, // Associate with the logged-in user
       replies: JSON.stringify([]), 
     };
     
@@ -125,8 +130,7 @@ export default function NewTicketPage() {
       if (createdTicket) {
         toast({ title: "Ticket Created", description: `Ticket "${createdTicket.title}" has been successfully created in Appwrite.` });
         
-        // Trigger admin notification (fire-and-forget for now)
-        triggerAdminNotification(createdTicket.$id, createdTicket.title, `New ticket created by ${customerName}.`);
+        triggerAdminNotification(createdTicket.$id, createdTicket.title, `New ticket created by ${customerName}. Associated user: ${user.name || user.email}`);
 
         router.refresh(); 
         router.push('/dashboard'); 
@@ -242,7 +246,7 @@ export default function NewTicketPage() {
 
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="ml-auto" disabled={isSubmitting}>
+            <Button type="submit" className="ml-auto" disabled={isSubmitting || !user}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
               Create Ticket
             </Button>

@@ -19,15 +19,17 @@ import { notifyAdmin, AdminNotificationInput } from "@/ai/flows/notify-admin-flo
 import type { Project, ProjectDocumentStatus } from '@/types';
 import { ArrowLeft, CalendarIcon, Loader2, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
-import { format, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 
 const projectStatuses: ProjectDocumentStatus[] = ["new", "active", "on-hold", "completed"];
-const ADMIN_USER_ID = "admin_user"; // Placeholder
+const ADMIN_USER_ID = "admin_user"; 
 
 export default function NewProjectPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get authenticated user
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
@@ -37,10 +39,10 @@ export default function NewProjectPage() {
   const triggerAdminNotification = async (projectId: string, projectTitle: string, eventDetails: string) => {
     try {
       const notificationInput: AdminNotificationInput = {
-        ticketId: projectId, // Using ticketId field for project ID as flow expects it
+        ticketId: projectId, 
         eventType: 'new_ticket', // Re-using 'new_ticket' event type, consider 'new_project'
         details: eventDetails,
-        ticketTitle: projectTitle, // Using ticketTitle for project title
+        ticketTitle: projectTitle, 
       };
       const notificationResult = await notifyAdmin(notificationInput);
       if (notificationResult.sent && notificationResult.notificationMessage) {
@@ -59,6 +61,10 @@ export default function NewProjectPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to create a project." });
+      return;
+    }
     setIsSubmitting(true);
 
     if (!name.trim() || !description.trim()) {
@@ -72,7 +78,8 @@ export default function NewProjectPage() {
       description,
       status,
       deadline: deadline ? deadline.toISOString() : null, 
-      teamMembers: [], 
+      teamMembers: [],
+      userId: user.$id, // Associate with the logged-in user
     };
     
     console.log("Attempting to create project with data:", JSON.stringify(newProjectData, null, 2));
@@ -82,8 +89,7 @@ export default function NewProjectPage() {
       if (createdProject) {
         toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
         
-        // Trigger admin notification
-        triggerAdminNotification(createdProject.$id, createdProject.name, `New project "${createdProject.name}" created.`);
+        triggerAdminNotification(createdProject.$id, createdProject.name, `New project "${createdProject.name}" created by ${user.name || user.email}.`);
 
         router.refresh(); 
         router.push('/projects/all'); 
@@ -163,7 +169,7 @@ export default function NewProjectPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="ml-auto" disabled={isSubmitting}>
+              <Button type="submit" className="ml-auto" disabled={isSubmitting || !user}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                 Create Project
               </Button>

@@ -3,7 +3,7 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Bell, UserCircle, Settings, LogOut, Maximize, Minimize, CheckCircle, Trash2 } from 'lucide-react';
+import { Bell, UserCircle, Settings, LogOut, Maximize, Minimize, LogInIcon } from 'lucide-react';
 import { PageTitle } from '@/components/common/page-title';
 import {
   DropdownMenu,
@@ -20,13 +20,14 @@ import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, m
 import type { AppNotification } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 
 interface AppHeaderProps {
   title?: string;
   children?: React.ReactNode;
 }
 
-const ADMIN_USER_ID = "admin_user"; // Placeholder
+const ADMIN_USER_ID = "admin_user"; // Placeholder - Notifications are still targeted to admin
 
 export function AppHeader({ title, children }: AppHeaderProps) {
   const { toast } = useToast();
@@ -34,8 +35,10 @@ export function AppHeader({ title, children }: AppHeaderProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
+  const { user, logout: authLogout, isLoading: authIsLoading } = useAuth(); // Get user and logout from useAuth
 
   const fetchUserNotifications = useCallback(async () => {
+    // Notifications are still for ADMIN_USER_ID for now
     try {
       const fetchedNotifications = await getNotifications(ADMIN_USER_ID, 7);
       const fetchedUnreadCount = await getUnreadNotificationCount(ADMIN_USER_ID);
@@ -43,30 +46,29 @@ export function AppHeader({ title, children }: AppHeaderProps) {
       setUnreadCount(fetchedUnreadCount);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
-      // Fallback to mock if needed, or show error
-      setNotifications([]); // Clear or use mock
+      setNotifications([]); 
       setUnreadCount(0);
     }
   }, []);
 
   useEffect(() => {
-    fetchUserNotifications();
-    // Optional: Refresh on window focus
-    const handleFocus = () => fetchUserNotifications();
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchUserNotifications]);
+    if (user) { // Only fetch notifications if a user (even if not used for filtering yet) is determined
+        fetchUserNotifications();
+        const handleFocus = () => fetchUserNotifications();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }
+  }, [fetchUserNotifications, user]);
 
   const handleNotificationClick = async (notification: AppNotification) => {
     if (!notification.isRead) {
       try {
         await markNotificationAsRead(notification.$id);
-        fetchUserNotifications(); // Refresh notifications and count
+        fetchUserNotifications(); 
       } catch (error) {
         console.error("Failed to mark notification as read:", error);
       }
     }
-    // Navigation is handled by Link component
   };
 
   const handleMarkAllAsRead = async () => {
@@ -74,7 +76,7 @@ export function AppHeader({ title, children }: AppHeaderProps) {
       const success = await markAllNotificationsAsRead(ADMIN_USER_ID);
       if (success) {
         toast({ title: "Notifications marked as read." });
-        fetchUserNotifications(); // Refresh
+        fetchUserNotifications(); 
       } else {
         toast({ variant: "destructive", title: "Error", description: "Could not mark all notifications as read." });
       }
@@ -83,7 +85,6 @@ export function AppHeader({ title, children }: AppHeaderProps) {
       console.error("Failed to mark all notifications as read:", error);
     }
   };
-
 
   const handleFullScreenChange = useCallback(() => {
     if (typeof document !== 'undefined') {
@@ -130,11 +131,10 @@ export function AppHeader({ title, children }: AppHeaderProps) {
     }
   };
 
-  const handleLogout = () => {
-    toast({
-      title: "Logout",
-      description: "Logout functionality to be implemented. You are not actually logged out.",
-    });
+  const handleLogout = async () => {
+    await authLogout();
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    // AuthContext's logout will handle redirection
   };
 
   return (
@@ -151,78 +151,81 @@ export function AppHeader({ title, children }: AppHeaderProps) {
           <span className="sr-only">{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</span>
         </Button>
 
-        <DropdownMenu open={isNotificationDropdownOpen} onOpenChange={(open) => {
-            setIsNotificationDropdownOpen(open);
-            if (open) fetchUserNotifications(); // Refresh when dropdown is opened
-        }}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9 relative">
-              <Bell className="h-4 w-4 md:h-5 md:w-5" />
-              {unreadCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-4 w-4 min-w-[1rem] p-0 flex items-center justify-center rounded-full text-xs"
-                >
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Badge>
+        {user && (
+          <DropdownMenu open={isNotificationDropdownOpen} onOpenChange={(open) => {
+              setIsNotificationDropdownOpen(open);
+              if (open) fetchUserNotifications(); 
+          }}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9 relative">
+                <Bell className="h-4 w-4 md:h-5 md:w-5" />
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-4 w-4 min-w-[1rem] p-0 flex items-center justify-center rounded-full text-xs"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Badge>
+                )}
+                <span className="sr-only">Notifications</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 md:w-96">
+              <DropdownMenuLabel className="flex justify-between items-center">
+                <span>Notifications</span>
+                {notifications.length > 0 && unreadCount > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} className="text-xs h-auto p-1">
+                    Mark all as read
+                  </Button>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {notifications.length > 0 ? (
+                notifications.map(notification => (
+                  <DropdownMenuItem key={notification.$id} asChild className={cn("cursor-pointer", !notification.isRead && "font-semibold")}>
+                    <Link href={notification.href || '#'} onClick={() => handleNotificationClick(notification)}>
+                      <div className="flex flex-col w-full">
+                        <span className="text-sm whitespace-normal">{notification.message}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">{new Date(notification.$createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
               )}
-              <span className="sr-only">Notifications</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 md:w-96">
-            <DropdownMenuLabel className="flex justify-between items-center">
-              <span>Notifications</span>
-              {notifications.length > 0 && unreadCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} className="text-xs h-auto p-1">
-                  Mark all as read
-                </Button>
-              )}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.length > 0 ? (
-              notifications.map(notification => (
-                <DropdownMenuItem key={notification.$id} asChild className={cn("cursor-pointer", !notification.isRead && "font-semibold")}>
-                  <Link href={notification.href || '#'} onClick={() => handleNotificationClick(notification)}>
-                    <div className="flex flex-col w-full">
-                      <span className="text-sm whitespace-normal">{notification.message}</span>
-                      <span className="text-xs text-muted-foreground mt-0.5">{new Date(notification.$createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
-            )}
-            {/* Placeholder for "View all notifications" link if needed later
-             <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-sm text-primary hover:underline cursor-pointer" asChild>
-                <Link href="#">View all notifications</Link>
-            </DropdownMenuItem> */}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9">
-              <UserCircle className="h-5 w-5 md:h-6 md:w-6" />
-              <span className="sr-only">User Profile</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/settings">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Logout</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9">
+                <UserCircle className="h-5 w-5 md:h-6 md:w-6" />
+                <span className="sr-only">User Profile</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : !authIsLoading ? ( // Only show login button if not loading and no user
+          <Button variant="outline" asChild>
+            <Link href="/login"><LogInIcon className="mr-2 h-4 w-4" />Login</Link>
+          </Button>
+        ): null}
       </div>
     </header>
   );

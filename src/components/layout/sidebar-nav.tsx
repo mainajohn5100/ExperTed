@@ -1,4 +1,4 @@
-// 'use client';
+
 'use client';
 
 import Link from 'next/link';
@@ -15,12 +15,12 @@ import {
   Ban,
   BarChart3,
   Briefcase,
-  Settings as SettingsIcon, // Renamed to avoid conflict
+  Settings as SettingsIcon,
   ChevronDown,
   ChevronRight,
   LucideIcon,
   Layers,
-  CheckCircle2 // Added import for CheckCircle2
+  CheckCircle2
 } from 'lucide-react';
 import {
   Sidebar,
@@ -32,8 +32,6 @@ import {
   SidebarMenuButton,
   SidebarMenuSub,
   SidebarMenuSubButton,
-  SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenuBadge,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -42,6 +40,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import React from 'react';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 
 interface NavItem {
   href: string;
@@ -81,11 +80,10 @@ const bottomNavItems: NavItem[] = [
   { href: '/settings', label: 'Settings', icon: SettingsIcon, matchExact: true },
 ];
 
-// Removed local SVG definition for CheckCircle2 as it's now imported from lucide-react
-
 export function SidebarNav() {
   const pathname = usePathname();
   const { state: sidebarState, isMobile, setOpenMobile } = useSidebar();
+  const { user } = useAuth(); // Get user from useAuth
 
   const isActive = (href: string, matchExact?: boolean) => {
     if (matchExact) {
@@ -104,7 +102,6 @@ export function SidebarNav() {
   };
 
   React.useEffect(() => {
-    // If a sub-item is active, ensure its parent menu is open
     mainNavItems.forEach(item => {
       if (item.subItems && item.subItems.some(sub => isActive(sub.href, sub.matchExact))) {
         if (!openSubMenus[item.label]) {
@@ -112,8 +109,7 @@ export function SidebarNav() {
         }
       }
     });
-  }, [pathname, mainNavItems, openSubMenus]);
-
+  }, [pathname, openSubMenus]); // Removed mainNavItems from dependencies as it's constant
 
   const renderNavItems = (items: NavItem[]) => {
     return items.map((item) => (
@@ -168,6 +164,16 @@ export function SidebarNav() {
     ));
   };
 
+  const getAvatarFallback = () => {
+    if (user?.name) {
+      return user.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.substring(0,2).toUpperCase();
+    }
+    return '??';
+  }
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -179,23 +185,25 @@ export function SidebarNav() {
       <SidebarContent className="flex-grow">
         <SidebarMenu>{renderNavItems(mainNavItems)}</SidebarMenu>
       </SidebarContent>
-      <SidebarFooter>
-        <Separator className="my-2" />
-        <SidebarMenu>{renderNavItems(bottomNavItems)}</SidebarMenu>
-        <Separator className="my-2" />
-        <div className={cn("p-2", sidebarState === 'collapsed' && "hidden")}>
-          <div className="flex items-center gap-2">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="user avatar" />
-              <AvatarFallback>JD</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-muted-foreground">john.doe@example.com</p>
+      {user && (
+        <SidebarFooter>
+          <Separator className="my-2" />
+          <SidebarMenu>{renderNavItems(bottomNavItems)}</SidebarMenu>
+          <Separator className="my-2" />
+          <div className={cn("p-2", sidebarState === 'collapsed' && "hidden")}>
+            <div className="flex items-center gap-2">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src="https://placehold.co/100x100.png" alt={user.name || 'User Avatar'} data-ai-hint="user avatar" />
+                <AvatarFallback>{getAvatarFallback()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium">{user.name || 'User'}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+              </div>
             </div>
           </div>
-        </div>
-      </SidebarFooter>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }
