@@ -51,6 +51,7 @@ export async function RecentTicketsTable() {
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
+              <TableHead>Title</TableHead>
               <TableHead className="hidden sm:table-cell">Status</TableHead>
               <TableHead className="hidden sm:table-cell">Priority</TableHead>
               <TableHead className="hidden md:table-cell">Created</TableHead>
@@ -65,6 +66,11 @@ export async function RecentTicketsTable() {
                   <div className="hidden text-sm text-muted-foreground md:inline">
                     {ticket.customerEmail}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Link href={`/tickets/view/${ticket.$id}`} className="font-medium hover:underline">
+                    {ticket.title}
+                  </Link>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
                   <Badge variant={ticket.status === 'closed' || ticket.status === 'terminated' ? 'outline' : 'default'} 
