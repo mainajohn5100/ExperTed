@@ -2,7 +2,7 @@
 'use client';
 
 import { SidebarNav } from '@/components/layout/sidebar-nav';
-import { SidebarInset } from '@/components/ui/sidebar';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'; // Added SidebarProvider
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
@@ -39,13 +39,15 @@ export default function AppLayout({
 
 
   return (
-    <div className="flex min-h-screen w-full">
-      <SidebarNav />
-      <SidebarInset className="flex flex-col">
-        <main className="flex-1 overflow-y-auto p-4 pt-6 md:p-6">
-          {children}
-        </main>
-      </SidebarInset>
-    </div>
+    <SidebarProvider defaultOpen> {/* SidebarProvider moved here */}
+      <div className="flex min-h-screen w-full">
+        <SidebarNav />
+        <SidebarInset className="flex flex-col">
+          <main className="flex-1 overflow-y-auto p-4 pt-6 md:p-6">
+            {children}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }

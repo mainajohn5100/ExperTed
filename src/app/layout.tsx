@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { SidebarProvider } from '@/components/ui/sidebar';
+// Removed SidebarProvider import
 import { AuthProvider } from '@/contexts/AuthContext';
 
 const fontSans = Inter({ 
@@ -25,9 +25,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable} font-sans antialiased`}>
         <AuthProvider>
-          <SidebarProvider defaultOpen>
-            {children}
-          </SidebarProvider>
+          {/* SidebarProvider removed from here */}
+          {children}
           <Toaster />
         </AuthProvider>
       </body>
