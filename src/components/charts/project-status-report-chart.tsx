@@ -2,13 +2,13 @@
 'use client';
 
 import * as React from 'react';
-import { Bar, BarChart, CartesianGrid, Pie, PieChart as RechartsPieChart, Line, LineChart as RechartsLineChart, XAxis, YAxis, Cell, Legend as RechartsLegend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Pie, PieChart as RechartsPieChart, Line, LineChart as RechartsLineChart, XAxis, YAxis, Cell, Legend as RechartsLegend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import type { Project, ProjectDocumentStatus } from '@/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Printer, Download, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIconCSS, Loader2 } from 'lucide-react';
+import { MoreVertical, Printer, Download, BarChart3, PieChartIcon, LineChart as LineChartIconCSS, Loader2 } from 'lucide-react';
 
 const projectStatusColors: Record<ProjectDocumentStatus, string> = {
   new: 'hsl(var(--chart-1))',
@@ -18,7 +18,7 @@ const projectStatusColors: Record<ProjectDocumentStatus, string> = {
 };
 
 const chartConfigBase = {
-  value: { label: 'Projects' }, 
+  value: { label: 'Projects' },
   new: { label: 'New', color: projectStatusColors.new },
   active: { label: 'Active', color: projectStatusColors.active },
   'on-hold': { label: 'On Hold', color: projectStatusColors['on-hold'] },
@@ -28,7 +28,7 @@ const chartConfigBase = {
 
 interface StatusData {
   name: string;
-  value: number; 
+  value: number;
   status: ProjectDocumentStatus;
   fill: string;
 }
@@ -55,15 +55,15 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
       const dataForChart = (Object.keys(projectStatusColors) as ProjectDocumentStatus[])
         .map((status) => ({
           name: status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' '),
-          value: statusCounts[status] || 0, 
+          value: statusCounts[status] || 0,
           status: status,
           fill: projectStatusColors[status] || 'hsl(var(--muted))',
         }));
 
       setProcessedData(dataForChart);
-      
-      const dynamicConfig: ChartConfig = { 
-        value: { label: "Projects" }, 
+
+      const dynamicConfig: ChartConfig = {
+        value: { label: "Projects" },
         line: { label: 'Projects', color: "hsl(var(--primary))" },
       };
       dataForChart.forEach(item => {
@@ -72,7 +72,7 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
       setChartConfig(dynamicConfig);
       console.log('[ProjectStatusReportChart] Processed project data:', dataForChart);
 
-    } catch (error) => {
+    } catch (error) { // Corrected line: Removed '=>'
       console.error("[ProjectStatusReportChart] Failed to process project data:", error);
     }
     setIsLoading(false);
@@ -102,7 +102,7 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
      </Card>
    );
  }
-  
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -149,7 +149,7 @@ export function ProjectStatusReportChart({ projects }: ProjectStatusReportChartP
               </Pie>
               <ChartLegend content={<ChartLegendContent nameKey="name" />} />
             </RechartsPieChart>
-          ) : ( 
+          ) : (
             <ResponsiveContainer width="100%" height="100%">
               <RechartsLineChart data={processedData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false}/>
