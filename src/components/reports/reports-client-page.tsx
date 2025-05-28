@@ -8,11 +8,12 @@ import { Loader2, Brain, Download as DownloadIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { summarizeAllReports, SummarizeAllReportsInput } from '@/ai/flows/summarize-all-reports-flow';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { MonthlyTicketVolumeReportChart } from '@/components/charts/monthly-ticket-volume-report-chart'; // This is actually MonthlyTicketStatusDistributionChart
+import { MonthlyTicketVolumeReportChart } from '@/components/charts/monthly-ticket-volume-report-chart'; 
 import { ProjectStatusReportChart } from '@/components/charts/project-status-report-chart';
 import { CsatReportChart } from '@/components/charts/csat-report-chart';
-import { MonthlyStatusBreakdownChart } from '@/components/charts/monthly-status-breakdown-chart'; // This is Yearly Ticket Trends
-import { AverageTicketResolutionTimeReportChart } from '@/components/charts/average-ticket-resolution-time-report-chart'; // New chart
+import { MonthlyStatusBreakdownChart } from '@/components/charts/monthly-status-breakdown-chart';
+import { AverageTicketResolutionTimeReportChart } from '@/components/charts/average-ticket-resolution-time-report-chart';
+import { OverallTicketsByStatusChart } from '@/components/charts/overall-tickets-by-status-chart'; // New import
 import { PageTitle } from '@/components/common/page-title';
 
 interface ReportsClientPageProps {
@@ -97,18 +98,21 @@ export function ReportsClientPage({ allTickets, allProjects }: ReportsClientPage
         {/* 1. Monthly Ticket Status Distribution (was MonthlyTicketVolumeReportChart) */}
         <MonthlyTicketVolumeReportChart tickets={allTickets} /> 
         
-        {/* 2. Average Ticket Resolution Time Report Chart (New) */}
+        {/* 2. Average Ticket Resolution Time Report Chart */}
         <AverageTicketResolutionTimeReportChart />
 
-        {/* 3. Projects by Status Report Chart */}
-        <ProjectStatusReportChart projects={allProjects} />
+        {/* 3. Overall Tickets by Status Chart (NEW) */}
+        <OverallTicketsByStatusChart tickets={allTickets} />
 
-        {/* 4. Yearly Ticket Trends (was MonthlyStatusBreakdownChart) */}
+        {/* 4. Projects by Status Report Chart */}
+        <ProjectStatusReportChart projects={allProjects} />
+        
+        {/* 5. Yearly Ticket Trends (was MonthlyStatusBreakdownChart) - Spanning two columns for better layout */}
         <div className="lg:col-span-2">
            <MonthlyStatusBreakdownChart tickets={allTickets} />
         </div>
         
-        {/* 5. Customer Satisfaction (CSAT) Report Chart (At the bottom) */}
+        {/* 6. Customer Satisfaction (CSAT) Report Chart (At the bottom) - Spanning two columns */}
         <div className="lg:col-span-2">
           <CsatReportChart />
         </div>
