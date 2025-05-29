@@ -9,15 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { User, Bell, Palette, Shield, Loader2, CheckCircle } from 'lucide-react';
+import { User, Bell, Palette, Shield, Loader2, CheckCircle, ShieldAlert } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/settings/image-dropzone';
 import { storage, avatarsBucketId, ID } from '@/lib/appwrite';
-import type { UserPreferences, AppFontSize, AppTheme } from '@/types'; // Updated types
+import type { UserPreferences, AppFontSize, AppTheme } from '@/types';
 
 const fontSizes: { value: AppFontSize; label: string }[] = [
   { value: 'sm', label: 'Small' },
@@ -34,7 +34,7 @@ const themes: { value: AppTheme; label: string }[] = [
 
 export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
-  const { user, updateUserName, updateUserAvatarUrl, updateUserPreferences, isLoading: authIsLoading, refreshUser } = useAuth();
+  const { user, updateUserName, updateUserAvatarUrl, updateUserPreferences, changePassword, isLoading: authIsLoading, refreshUser } = useAuth();
   const { toast } = useToast();
 
   // Profile States
@@ -53,6 +53,12 @@ export default function SettingsPage() {
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>('default');
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
 
+  // Security States
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -63,20 +69,13 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) {
       const userPrefs = user.prefs as UserPreferences;
-      // Profile
       setNameInput(user.name || '');
       setAvatarUrlInput(userPrefs?.avatarUrl || '');
       setSelectedAvatarFile(null);
-
-      // Notifications
       setEmailNotificationsEnabled(userPrefs?.emailNotificationsEnabled || false);
-      
-      // Appearance
       setSelectedFontSize(userPrefs?.fontSize || 'default');
       setSelectedTheme(userPrefs?.theme || 'default');
       setIsDark(userPrefs?.darkMode === undefined ? document.documentElement.classList.contains('dark') : userPrefs.darkMode);
-
-
     }
   }, [user]);
 
@@ -89,7 +88,6 @@ export default function SettingsPage() {
         document.documentElement.classList.remove('dark');
       }
     }
-    // Note: We'll save darkMode with other appearance settings
   };
 
   const handleAvatarFileSelected = (file: File | null) => {
@@ -151,7 +149,6 @@ export default function SettingsPage() {
 
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises);
-        // refreshUser will be called internally by updateUser... methods if they update context
         let successMessage = "Profile updated successfully!";
         if (nameChanged && avatarChanged) successMessage = "Name and avatar updated!";
         else if (nameChanged) successMessage = "Name updated successfully!";
@@ -193,16 +190,48 @@ export default function SettingsPage() {
       const newPrefs: Partial<UserPreferences> = {
         fontSize: selectedFontSize,
         theme: selectedTheme,
-        darkMode: isDark, // Save dark mode state
+        darkMode: isDark,
       };
       await updateUserPreferences(newPrefs);
-      // ThemeApplicator will handle applying the styles globally
       toast({ title: "Success", description: "Appearance settings saved." });
     } catch (error) {
       console.error("Failed to save appearance settings:", error);
       toast({ variant: "destructive", title: "Save Failed", description: (error as Error).message || "Could not save appearance settings." });
     } finally {
       setIsSavingAppearance(false);
+    }
+  };
+
+  const handlePasswordChange = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!user) {
+      toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in." });
+      return;
+    }
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "Please fill all password fields." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ variant: "destructive", title: "Password Mismatch", description: "New password and confirm password do not match." });
+      return;
+    }
+    if (newPassword.length < 8) {
+        toast({ variant: "destructive", title: "Password Too Short", description: "New password must be at least 8 characters." });
+        return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      toast({ title: "Password Changed", description: "Your password has been successfully updated." });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Password Change Failed", description: error.message || "Could not change password. Please check your current password." });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -312,7 +341,7 @@ export default function SettingsPage() {
                 </Label>
                 <Switch 
                   id="app-notifications" 
-                  checked={true} // Default for demo
+                  checked={true}
                   disabled 
                 />
               </div>
@@ -387,25 +416,53 @@ export default function SettingsPage() {
               <CardDescription>Manage your account security settings.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-1">
-                <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" disabled placeholder="Coming Soon" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" disabled placeholder="Coming Soon" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" disabled placeholder="Coming Soon" />
-              </div>
-              <Button disabled>Change Password (Coming Soon)</Button>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div className="space-y-1">
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input 
+                    id="current-password" 
+                    type="password" 
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    disabled={isChangingPassword || authIsLoading}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input 
+                    id="new-password" 
+                    type="password" 
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={isChangingPassword || authIsLoading}
+                    minLength={8}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input 
+                    id="confirm-password" 
+                    type="password" 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isChangingPassword || authIsLoading}
+                    minLength={8}
+                    required
+                  />
+                </div>
+                <Button type="submit" disabled={isChangingPassword || authIsLoading || !user}>
+                  {isChangingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+                  Change Password
+                </Button>
+              </form>
               <Separator />
               <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
                 <Label htmlFor="2fa" className="flex flex-col space-y-1">
                   <span>Two-Factor Authentication (2FA)</span>
                   <span className="font-normal leading-snug text-muted-foreground">
-                    Enhance your account security by enabling 2FA. (Coming Soon)
+                    Enhance your account security by enabling 2FA.
                   </span>
                 </Label>
                 <Button variant="outline" disabled>Enable 2FA (Coming Soon)</Button>
