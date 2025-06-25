@@ -4,10 +4,11 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '@/contexts/AuthContext';
+// import { AuthProvider } from '@/contexts/AuthContext'; // To be replaced
+import { SessionProvider } from "next-auth/react"; // Import NextAuth SessionProvider
 import ThemeApplicator from '@/components/common/theme-applicator'; // Import ThemeApplicator
 
-const fontSans = Inter({ 
+const fontSans = Inter({
   variable: '--font-sans',
   subsets: ['latin'],
 });
@@ -26,11 +27,12 @@ export default function RootLayout({
         <meta name="description" content="ExperTed - Smart Helpdesk Solution" />
       </head>
       <body className={`${fontSans.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <ThemeApplicator /> {/* Apply theme and font size based on user prefs */}
+        <SessionProvider> {/* Wrap with NextAuth SessionProvider */}
+          {/* ThemeApplicator might need refactoring to use useSession or a new way to get user prefs */}
+          <ThemeApplicator />
           {children}
           <Toaster />
-        </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
   );
