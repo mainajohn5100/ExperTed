@@ -35,7 +35,10 @@ export function AppHeader({ title, children }: AppHeaderProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
-  const { user, logout: authLogout, isLoading: authIsLoading } = useAuth(); // Get user and logout from useAuth
+  // Updated useAuth destructuring for NextAuth.js
+  const { session, status, logout: nextAuthLogout } = useAuth();
+  const user = session?.user; // Extract user from session
+  const authIsLoading = status === 'loading'; // Equivalent of isLoading
 
   const fetchUserNotifications = useCallback(async () => {
     // Notifications are still for ADMIN_USER_ID for now
@@ -58,13 +61,15 @@ export function AppHeader({ title, children }: AppHeaderProps) {
         window.addEventListener('focus', handleFocus);
         return () => window.removeEventListener('focus', handleFocus);
     }
-  }, [fetchUserNotifications, user]);
+  }, [fetchUserNotifications, user]); // user here is now session.user, so this should still work if user is defined
 
   const handleNotificationClick = async (notification: AppNotification) => {
     if (!notification.isRead) {
       try {
+        // This uses Appwrite specific ID: notification.$id
+        // This will need to be refactored when notifications are moved away from Appwrite
         await markNotificationAsRead(notification.$id);
-        fetchUserNotifications(); 
+        fetchUserNotifications();
       } catch (error) {
         console.error("Failed to mark notification as read:", error);
       }
@@ -73,10 +78,12 @@ export function AppHeader({ title, children }: AppHeaderProps) {
 
   const handleMarkAllAsRead = async () => {
     try {
+      // This uses Appwrite specific logic
+      // This will need to be refactored
       const success = await markAllNotificationsAsRead(ADMIN_USER_ID);
       if (success) {
         toast({ title: "Notifications marked as read." });
-        fetchUserNotifications(); 
+        fetchUserNotifications();
       } else {
         toast({ variant: "destructive", title: "Error", description: "Could not mark all notifications as read." });
       }
@@ -132,9 +139,10 @@ export function AppHeader({ title, children }: AppHeaderProps) {
   };
 
   const handleLogout = async () => {
-    await authLogout();
+    // Use the logout function from NextAuth via the refactored useAuth hook
+    await nextAuthLogout();
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    // AuthContext's logout will handle redirection
+    // NextAuth's signOut will handle redirection (default or as configured)
   };
 
   return (
@@ -151,10 +159,11 @@ export function AppHeader({ title, children }: AppHeaderProps) {
           <span className="sr-only">{isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}</span>
         </Button>
 
-        {user && (
+        {/* Display Notifications only if authenticated */}
+        {status === 'authenticated' && user && (
           <DropdownMenu open={isNotificationDropdownOpen} onOpenChange={(open) => {
               setIsNotificationDropdownOpen(open);
-              if (open) fetchUserNotifications(); 
+              if (open) fetchUserNotifications();
           }}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9 relative">
@@ -198,18 +207,26 @@ export function AppHeader({ title, children }: AppHeaderProps) {
           </DropdownMenu>
         )}
 
-        {user ? (
+        {/* User Dropdown or Login Button */}
+        {authIsLoading ? (
+          <div className="h-8 w-8 animate-pulse rounded-full bg-muted md:h-9 md:w-9" /> // Skeleton loader for user icon area
+        ) : status === 'authenticated' && user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9">
+                {/* TODO: Replace with user.image if available from NextAuth session later */}
                 <UserCircle className="h-5 w-5 md:h-6 md:w-6" />
                 <span className="sr-only">User Profile</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {/* Display user's name or email. Ensure user object is checked. */}
+                {user.name ? user.name : (user.email ? user.email : 'My Account')}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="cursor-pointer">
+                {/* Settings link might need to be conditional if user has no name/email yet */}
                 <Link href="/settings">
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
@@ -221,11 +238,12 @@ export function AppHeader({ title, children }: AppHeaderProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : !authIsLoading ? ( // Only show login button if not loading and no user
+        ) : (
+          // Show login button if not loading and not authenticated (status === 'unauthenticated')
           <Button variant="outline" asChild>
-            <Link href="/login"><LogInIcon className="mr-2 h-4 w-4" />Login</Link>
+            <Link href="/auth/signin"><LogInIcon className="mr-2 h-4 w-4" />Login</Link>
           </Button>
-        ): null}
+        )}
       </div>
     </header>
   );

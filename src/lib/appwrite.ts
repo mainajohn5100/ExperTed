@@ -47,4 +47,7 @@ export const updateUserPrefsInAppwrite = async (prefs: Partial<Models.Preference
 };
 
 
-export { client, account, databases, storage, ID, Query, Models };
+// Models is a namespace, not a direct export from the 'appwrite' package in newer versions.
+// The types like Models.User are available through the SDK's own typings.
+// Removing Models from re-export should resolve the warning.
+export { client, account, databases, storage, ID, Query };
